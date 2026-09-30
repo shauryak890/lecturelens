@@ -1,0 +1,28 @@
+# Secrets
+.env
+
+# Course material and generated data (NFR-8: never commit course PDFs)
+data/raw/*
+!data/raw/.gitkeep
+data/index/
+data/cache/
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.streamlit/secrets.toml
+.idea/
+.vscode/
+.DS_Store

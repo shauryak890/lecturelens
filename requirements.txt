@@ -1,0 +1,16 @@
+# Runtime dependencies. Pin exact versions (package==x.y.z) before submission (SPEC section 10).
+google-genai
+pydantic>=2
+pyyaml
+python-dotenv
+pymupdf4llm
+sentence-transformers
+chromadb
+rank-bm25
+numpy
+tenacity
+streamlit
+typer
+rich
+pandas
+# openai        # only if you enable the openai_compatible provider
