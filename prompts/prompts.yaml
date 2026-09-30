@@ -2,9 +2,29 @@
 # All LLM prompts for LectureLens. Code never contains prompt text.
 # Placeholders use {name}; literal braces must be doubled {{ }}.
 
-version: "1.0.0"
+version: "1.1.0"
 changelog:
   - "1.0.0: initial prompts (tutor, condense, answer, repair, quiz, summary, flashcards, judges)"
+  - "1.1.0: add repair_json task, excerpt/history formats and fixed user-facing messages"
+
+# ---------------------------------------------------------------- FORMATS
+# Building blocks the code fills in when assembling prompts (kept here, not in Python).
+formats:
+  excerpt: "[S{n}] ({file_name}, p.{page}{heading})\n{text}"
+  excerpt_heading: ", {heading_path}"
+  excerpt_separator: "\n\n"
+  history_turn: "Student: {question}\nAssistant: {answer}"
+  history_separator: "\n"
+  # {problem} values for the repair_answer task
+  problem_no_citations: "The answer is marked answerable but cites no valid excerpt. Every factual sentence needs a citation such as [S1]."
+  problem_invalid_ids: "It cited excerpt numbers that do not exist: {ids}."
+
+# ---------------------------------------------------------------- MESSAGES
+# Fixed answers returned without (or instead of) an LLM call.
+messages:
+  not_found: "I couldn't find this in your course material."
+  empty_index: "Your library is empty. Add PDFs to data/raw (or run `ingest --sample`) and index them first."
+  blocked: "The model declined to answer this question (safety filter or empty response). Try rephrasing it."
 
 # ---------------------------------------------------------------- SYSTEM PROMPTS
 system:
@@ -110,6 +130,20 @@ tasks:
 
       Question: {question}
       Return a corrected JSON answer that follows all grounding rules.
+
+  repair_json:
+    system: null
+    temperature: 0.0
+    max_output_tokens: 2500      # large enough for the longest task output (quiz)
+    schema: null                 # the schema of the task being repaired is sent with the call
+    template: |
+      Your previous response could not be parsed as JSON matching the required schema.
+      Validation error: {error}
+
+      Previous response:
+      {raw}
+
+      Return only the corrected JSON object, keeping the same content. No commentary.
 
   quiz:
     system: generator

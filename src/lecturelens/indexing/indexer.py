@@ -224,21 +224,32 @@ class Indexer:
 
     def rebuild_bm25(self) -> BM25Index:
         """Rebuild the BM25 index over every stored chunk and save it."""
-        chunks = self.store.all_chunks()
-        add_header = self.settings.ingestion.add_context_header
-        index = BM25Index(self.settings.retrieval.bm25)
-        index.build([c.chunk_id for c in chunks], [indexed_text(c, add_header) for c in chunks])
-        index.save(self.paths.bm25)
-        return index
+        return rebuild_bm25(self.settings, self.store)
 
     def load_bm25(self) -> BM25Index:
         """Load the saved BM25 index, rebuilding it if missing or built with other settings."""
-        if self.paths.bm25.is_file():
-            try:
-                return BM25Index.load(self.paths.bm25, self.settings.retrieval.bm25)
-            except IndexMismatchError as exc:
-                logger.info("%s Rebuilding BM25 (cheap, no embeddings needed).", exc)
-        return self.rebuild_bm25()
+        return load_or_build_bm25(self.settings, self.store)
+
+
+def rebuild_bm25(settings: Settings, store: VectorStore) -> BM25Index:
+    """Build the BM25 index over every chunk in ``store`` and save it under ``app.index_dir``."""
+    chunks = store.all_chunks()
+    add_header = settings.ingestion.add_context_header
+    index = BM25Index(settings.retrieval.bm25)
+    index.build([c.chunk_id for c in chunks], [indexed_text(c, add_header) for c in chunks])
+    index.save(IndexPaths(settings.app.index_dir).bm25)
+    return index
+
+
+def load_or_build_bm25(settings: Settings, store: VectorStore) -> BM25Index:
+    """Load the saved BM25 index; rebuild it (cheap, no embeddings) if missing or stale."""
+    path = IndexPaths(settings.app.index_dir).bm25
+    if path.is_file():
+        try:
+            return BM25Index.load(path, settings.retrieval.bm25)
+        except IndexMismatchError as exc:
+            logger.info("%s Rebuilding BM25 (cheap, no embeddings needed).", exc)
+    return rebuild_bm25(settings, store)
 
 
 def build_indexer(settings: Settings) -> Indexer:

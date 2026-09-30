@@ -32,7 +32,7 @@ class Embedder(Protocol):
         ...
 
 
-def _quiet_hf_libraries() -> None:
+def quiet_hf_libraries() -> None:
     """Hide Hugging Face progress bars and info/warning chatter (errors still surface)."""
     from huggingface_hub.utils import disable_progress_bars
     from huggingface_hub.utils import logging as hub_logging
@@ -53,7 +53,7 @@ class LocalEmbedder:
         Args:
             cfg: Embedding settings: model id, device, batch size, query instruction.
         """
-        _quiet_hf_libraries()
+        quiet_hf_libraries()
         from sentence_transformers import SentenceTransformer  # heavy: imports torch
 
         self._cfg = cfg

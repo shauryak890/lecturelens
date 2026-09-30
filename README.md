@@ -12,7 +12,7 @@ DSE4150 (Natural Language Processing) course project. The full specification is 
 |---|---|---|
 | P0 Setup | Scaffold, config + prompt files, schemas, settings loader, PromptRegistry, `models` command | Done |
 | P1 Ingestion + indexing | Loader, cleaner, chunker, embedder, ChromaDB, BM25, manifest, `ingest`/`stats`, sample notes | Done |
-| P2 Retrieval + RAG | RRF, reranker, hybrid retriever, LLM client, citations, pipeline, `ask`/`chat` | Not started |
+| P2 Retrieval + RAG | RRF, reranker, hybrid retriever, LLM client, citations, pipeline, `ask`/`chat` | Done |
 | P3 Tools + UI | Quiz, summary, flashcards, Streamlit app | Not started |
 | P4 Evaluation + polish | Metrics, judge, ablations, report, README results | Not started |
 
@@ -27,10 +27,14 @@ copy .env.example .env      # then put your GEMINI_API_KEY in .env
 python -m lecturelens models
 python -m lecturelens ingest --sample   # or put PDFs in data/raw and run: ingest
 python -m lecturelens stats
+python -m lecturelens ask "What is minimum edit distance?" --debug
+python -m lecturelens chat            # follow-up questions; /clear, /exit
 ```
 
 The first `ingest` downloads the bge-small embedding model (~130 MB) once; later runs load it
-from the local Hugging Face cache and skip unchanged files.
+from the local Hugging Face cache and skip unchanged files. The first question also downloads
+the cross-encoder reranker (~90 MB). LLM calls are logged to `logs/llm_calls.jsonl` and cached
+in `data/cache/llm_cache.sqlite`, so repeated questions cost no API quota.
 
 ## Key files
 

@@ -12,6 +12,7 @@ from lecturelens.logging_utils import PACKAGE_LOGGER
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = ROOT / "config" / "config.yaml"
 PROMPTS_PATH = ROOT / "prompts" / "prompts.yaml"
+SAMPLE_DIR = ROOT / "data" / "sample"
 
 
 @pytest.fixture(autouse=True)
@@ -36,3 +37,27 @@ def settings() -> Settings:
 def registry() -> PromptRegistry:
     """PromptRegistry over the real prompts file."""
     return PromptRegistry(PROMPTS_PATH)
+
+
+@pytest.fixture
+def tiny_settings(settings: Settings, tmp_path: Path) -> Settings:
+    """Settings whose index and cache live in a temp dir."""
+    return settings.with_overrides(
+        {
+            "app.index_dir": str(tmp_path / "index"),
+            "app.log_dir": str(tmp_path / "logs"),
+            "llm.cache.path": str(tmp_path / "cache.sqlite"),
+        }
+    )
+
+
+@pytest.fixture
+def tiny_index(tiny_settings: Settings):  # returns an Indexer (imported lazily)
+    """The three sample notes indexed with HashEmbedder + WhitespaceCounter (no downloads)."""
+    from lecturelens.indexing.indexer import Indexer
+
+    from .fakes import HashEmbedder, WhitespaceCounter
+
+    indexer = Indexer(tiny_settings, HashEmbedder(dim=128), WhitespaceCounter())
+    indexer.ingest(SAMPLE_DIR)
+    return indexer

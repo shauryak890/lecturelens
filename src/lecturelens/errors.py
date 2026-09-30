@@ -31,3 +31,7 @@ class LLMError(LectureLensError):
 
 class LLMOutputError(LLMError):
     """The LLM returned output that could not be parsed or validated, even after repair."""
+
+
+class LLMBlockedError(LLMError):
+    """The LLM returned no usable text (safety block, recitation, or an empty response)."""

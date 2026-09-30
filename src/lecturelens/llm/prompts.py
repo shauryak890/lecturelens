@@ -27,13 +27,19 @@ class TaskSpec(BaseModel):
     system: str | None
     temperature: float = Field(ge=0, le=2)
     max_output_tokens: int = Field(gt=0)
-    schema_name: str = Field(alias="schema")
+    schema_name: str | None = Field(alias="schema")  # None: schema supplied by the caller
     template: str
     modes: dict[str, str] = {}
 
     @property
     def response_model(self) -> type[BaseModel]:
-        """The Pydantic class the LLM output must validate against."""
+        """The Pydantic class the LLM output must validate against.
+
+        Raises:
+            PromptError: If the task declares no schema (e.g. ``repair_json``).
+        """
+        if self.schema_name is None:
+            raise PromptError(f"Task {self.name!r} has no fixed schema; the caller supplies one")
         return get_schema(self.schema_name)
 
 
@@ -44,6 +50,8 @@ class PromptFile(BaseModel):
 
     version: str = Field(min_length=1)
     changelog: list[str] = []
+    formats: dict[str, str] = {}
+    messages: dict[str, str] = {}
     system: dict[str, str]
     tasks: dict[str, TaskSpec]
 
@@ -53,7 +61,8 @@ class PromptFile(BaseModel):
             if task.system is not None and task.system not in self.system:
                 raise ValueError(f"task {name!r} uses unknown system prompt {task.system!r}")
             try:
-                get_schema(task.schema_name)
+                if task.schema_name is not None:
+                    get_schema(task.schema_name)
             except PromptError as exc:
                 raise ValueError(f"task {name!r}: {exc}") from exc
         return self
@@ -153,6 +162,28 @@ class PromptRegistry:
                 f"Unknown system prompt {name!r}. Known: {', '.join(self.system_names)}"
             )
         return _render(self._file.system[name], f"system.{name}", variables)
+
+    def format(self, name: str, **variables: Any) -> str:
+        """Render the building block ``formats.<name>`` (e.g. the excerpt label).
+
+        Raises:
+            PromptError: If the format does not exist or a variable is missing.
+        """
+        if name not in self._file.formats:
+            raise PromptError(f"Unknown format {name!r}. Known: {', '.join(self._file.formats)}")
+        return _render(self._file.formats[name], f"formats.{name}", variables)
+
+    def message(self, name: str) -> str:
+        """Return the fixed user-facing message ``messages.<name>``.
+
+        Raises:
+            PromptError: If the message does not exist.
+        """
+        try:
+            return self._file.messages[name]
+        except KeyError:
+            known = ", ".join(self._file.messages)
+            raise PromptError(f"Unknown message {name!r}. Known: {known}") from None
 
     def system_for(self, task: str, **variables: Any) -> str | None:
         """Render the system prompt used by ``task``, or ``None`` if it has none."""

@@ -18,6 +18,7 @@ EXPECTED_TASKS = {
     "condense_question",
     "answer",
     "repair_answer",
+    "repair_json",
     "quiz",
     "summarize",
     "flashcards",
@@ -71,6 +72,10 @@ def test_missing_variable_raises(registry: PromptRegistry, task: str) -> None:
 
 def test_every_schema_name_maps_to_pydantic_class(registry: PromptRegistry) -> None:
     for task in registry.task_names:
+        if registry.task(task).schema_name is None:  # repair_json: caller supplies the schema
+            with pytest.raises(PromptError, match="no fixed schema"):
+                _ = registry.task(task).response_model
+            continue
         model = registry.task(task).response_model
         assert issubclass(model, BaseModel)
         assert model is LLM_SCHEMAS[registry.task(task).schema_name]
@@ -104,6 +109,8 @@ def test_few_shot_examples_match_their_schema(registry: PromptRegistry) -> None:
     checked = 0
     for task in registry.task_names:
         text, spec = registry.render(task, **_dummy_vars(registry.required_vars(task)))
+        if spec.schema_name is None:
+            continue
         for example in FEW_SHOT_OUTPUT.findall(text):
             spec.response_model.model_validate(json.loads(example))
             checked += 1
@@ -141,3 +148,21 @@ def test_missing_version_rejected(tmp_path: Path) -> None:
 def test_missing_file_rejected(tmp_path: Path) -> None:
     with pytest.raises(PromptError, match="not found"):
         PromptRegistry(tmp_path / "missing.yaml")
+
+
+def test_formats_and_messages_render(registry: PromptRegistry) -> None:
+    excerpt = registry.format(
+        "excerpt", n=1, file_name="l3.pdf", page=14, heading=", Unit 2", text="Body."
+    )
+    assert excerpt == "[S1] (l3.pdf, p.14, Unit 2)\nBody."
+    assert registry.format("problem_invalid_ids", ids="7, 9").endswith("7, 9.")
+    assert "couldn't find" in registry.message("not_found")
+    with pytest.raises(PromptError, match="Unknown format"):
+        registry.format("nope")
+    with pytest.raises(PromptError, match="Unknown message"):
+        registry.message("nope")
+
+
+def test_version_bumped_with_changelog(registry: PromptRegistry) -> None:
+    data = yaml.safe_load(PROMPTS_PATH.read_text(encoding="utf-8"))
+    assert any(entry.startswith(registry.version) for entry in data["changelog"])

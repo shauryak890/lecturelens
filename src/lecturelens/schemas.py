@@ -142,6 +142,13 @@ class RelevancyJudgement(BaseModel):
 # ---------------------------------------------------------------- results and telemetry
 
 
+class ChatTurn(BaseModel):
+    """One earlier question/answer exchange, used to condense follow-up questions."""
+
+    question: str
+    answer: str
+
+
 class AskResult(BaseModel):
     """What the RAG pipeline returns to the UI and CLI."""
 
@@ -150,14 +157,24 @@ class AskResult(BaseModel):
     response: AnswerResponse
     sources: list[RetrievedChunk]  # index i corresponds to [S{i+1}]
     timings_ms: dict[str, float]
-    usage: dict[str, int]  # prompt/output tokens across calls
+    usage: dict[str, int]  # prompt_tokens, output_tokens, llm_calls, cache_hits across calls
 
 
 class Usage(BaseModel):
-    """Token usage of one LLM call."""
+    """Token and request counts of one or more LLM calls (add them with ``+``)."""
 
     prompt_tokens: int = 0
     output_tokens: int = 0
+    api_calls: int = 0  # HTTP requests actually sent (retries and repairs included)
+    cache_hits: int = 0
+
+    def __add__(self, other: "Usage") -> "Usage":
+        return Usage(
+            prompt_tokens=self.prompt_tokens + other.prompt_tokens,
+            output_tokens=self.output_tokens + other.output_tokens,
+            api_calls=self.api_calls + other.api_calls,
+            cache_hits=self.cache_hits + other.cache_hits,
+        )
 
 
 class LLMCallRecord(BaseModel):

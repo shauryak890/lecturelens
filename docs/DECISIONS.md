@@ -125,3 +125,66 @@ simpler option was preferred.
   RapidOCR logger is raised to WARNING, and stray `print()`s during PDF parsing are captured
   and logged at DEBUG. The CLI progress display stays clean and the details are in
   `logs/lecturelens.log`.
+
+## P2 - Retrieval and grounded answering
+
+- **Gemini "thinking" tokens count against `max_output_tokens`.** Measured live on
+  gemini-3.8-flash: with a 150-token cap the model spent 142 tokens thinking and returned 4
+  tokens of broken JSON. New config keys:
+  - `llm.thinking_level: low` keeps thinking short (the model rejects `minimal`).
+  - `llm.thinking_token_allowance: 1024` is added to every task's `max_output_tokens`, so the
+    prompt file's numbers keep meaning "visible answer length".
+  - If a model rejects the thinking level (HTTP 400 mentioning thinking), the backend
+    retries that model once without it and remembers not to send it again.
+  - Empty output with finish reason `MAX_TOKENS` raises `LLMOutputError`, whose message
+    names the allowance. A repair call cannot fix missing content.
+- **Automatic function calling is disabled** in every request. We use no tools, and the SDK
+  otherwise prints a notice for each call.
+- **SDK boundary.** All google-genai code is in `llm/client.py`, behind a one-method
+  `LLMBackend` interface (`GeminiBackend`). Tests inject `FakeBackend`, so the *real*
+  retry/fallback/cache/repair logic runs offline. `FakeLLMClient` (tests/fakes.py)
+  subclasses `LLMClient`: it renders the real prompts, then returns scripted objects.
+- **Rate limiter.** It enforces a sliding 60 s window rather than the spec's token bucket.
+  A bucket of size N can allow up to 2N requests across a window boundary; a window never
+  exceeds `requests_per_minute`.
+- **Retries** use tenacity: `stop_after_attempt(max_retries)` and
+  `wait_exponential_jitter(initial=backoff_base_s)`, i.e. about 2, 4, 8 s plus jitter,
+  retrying only on 429, 5xx and network timeouts. After the last retry the fallback model
+  is tried once. Auth errors (401/403, or 400 "API key not valid") and unknown models fail
+  immediately with a hint.
+- **Repair of invalid JSON** is a prompt-file task (`repair_json`, schema supplied by the
+  caller). It sends the validation error and the raw text back, at most once. A second
+  failure raises `LLMOutputError`.
+- **Prompt file 1.1.0** adds `formats` (excerpt label, history turn, repair problem
+  descriptions) and `messages` (not found, empty index, blocked). Every string sent to the
+  model or shown as a fixed answer therefore lives in prompts.yaml.
+- **Cache.** It stores the *validated* JSON, keyed by model, system, user, temperature,
+  schema and prompt version. Entries that no longer validate (schema changed) are ignored.
+  Only temperatures up to `llm.cache.max_cacheable_temperature` are cached.
+- **Token budget** (`retrieval.max_context_tokens`) is applied in one place,
+  `rag.context.build_context`, so `[S{i}]` always equals `sources[i-1]`. The first chunk is
+  always kept.
+- **Abstention without an LLM call** happens when the index is empty or when reranking is
+  on and every candidate scores below `retrieval.min_rerank_score`. With reranking off there
+  is no score threshold (BM25 and cosine scores have no calibrated cut-off), so the LLM
+  decides and its `answerable=false` path is measured in the eval.
+- **The reranker scores the same text that was indexed** (with the "file | heading"
+  context header).
+- **Citations.** Grouped forms such as `[S1, S3]` are normalised to `[S1][S3]`. Invalid ids
+  are stripped from text and list, and `cited_sources` becomes the union of valid ids listed
+  and valid ids used in the text. An "answerable" reply left with no valid citation gets one
+  `repair_answer` call; if it is still uncited, confidence is set to low.
+- **Blocked or empty responses** (safety filters) become the fixed "blocked" message with
+  `answerable=false` instead of an error.
+- **`AskResult.usage`** has `prompt_tokens`, `output_tokens`, `llm_calls` (HTTP requests,
+  including retries and repairs) and `cache_hits`. `timings_ms` has condense, retrieve,
+  generate and total.
+- **Query-time index check.** `build_retriever` refuses an index built with a different
+  embedding model. Models (embedder, cross-encoder) load lazily on the first question.
+- **`llm.provider: openai_compatible`** (optional in SPEC 8.5) is not implemented and raises
+  a clear `ConfigError`.
+- **CLI.**
+  - `ask`/`chat` accept `--mode`, `--retrieval`, `--no-rerank` and `--debug`. Chat keeps
+    history (`/clear`, `/exit`).
+  - Console streams replace characters they cannot encode. A cp1252 Windows console
+    otherwise crashed printing "⇒" in an answer.

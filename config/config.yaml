@@ -20,6 +20,8 @@ llm:
   max_retries: 4
   backoff_base_s: 2
   requests_per_minute: 8             # client-side limiter, keep below your AI Studio limit
+  thinking_level: low                # null = model default; thinking tokens count as output
+  thinking_token_allowance: 1024     # added to each task's max_output_tokens for thinking
   cache:
     enabled: true
     path: data/cache/llm_cache.sqlite

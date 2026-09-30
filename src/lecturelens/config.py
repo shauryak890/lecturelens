@@ -65,6 +65,8 @@ class LLMCfg(_Cfg):
     max_retries: int = Field(ge=1)
     backoff_base_s: float = Field(gt=0)
     requests_per_minute: int = Field(gt=0)
+    thinking_level: Literal["minimal", "low", "medium", "high"] | None
+    thinking_token_allowance: int = Field(ge=0)
     cache: LLMCacheCfg
 
 
