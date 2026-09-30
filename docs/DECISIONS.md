@@ -188,3 +188,21 @@ simpler option was preferred.
     history (`/clear`, `/exit`).
   - Console streams replace characters they cannot encode. A cp1252 Windows console
     otherwise crashed printing "⇒" in an answer.
+
+### Evaluation dataset (`eval/qa_dataset.jsonl`)
+
+- **Written by Claude Code at the student's request** (SPEC 15 assigns it to the student). It
+  must be reviewed before the P4 evaluation. Every answerable question was written from the
+  full text of its gold page(s) as extracted into the index, and every reference answer
+  paraphrases those pages.
+- **Mix (30 questions):** 7 factual, 7 conceptual, 4 comparison, 3 keyword-heavy, 2 follow-up
+  pairs (4 items, the second turn carries `history`) and 5 unanswerable. The unanswerable
+  topics are RLHF, Viterbi/HMM, BLEU, beam search and LDA. Each has zero keyword hits in the
+  whole index, including the sample notes.
+- **Gold pages use the file name and 1-based page** as shown in citations. A question can
+  have several gold pages when the material repeats (e.g. e-insertion appears on two PPT1
+  slides and one PPT-2 slide). q10 also counts the sample note `01_tokenization.md`, which
+  genuinely answers it.
+- **Label sanity check** (retrieval only, no LLM, default hybrid + rerank, 23 questions
+  without history): hit@1 16/23 and hit@5 23/23, so every gold page is retrievable. 3 of the
+  5 unanswerable questions already abstain without an LLM call (all rerank scores below -5).

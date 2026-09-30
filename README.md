@@ -14,7 +14,7 @@ DSE4150 (Natural Language Processing) course project. The full specification is 
 | P1 Ingestion + indexing | Loader, cleaner, chunker, embedder, ChromaDB, BM25, manifest, `ingest`/`stats`, sample notes | Done |
 | P2 Retrieval + RAG | RRF, reranker, hybrid retriever, LLM client, citations, pipeline, `ask`/`chat` | Done |
 | P3 Tools + UI | Quiz, summary, flashcards, Streamlit app | Not started |
-| P4 Evaluation + polish | Metrics, judge, ablations, report, README results | Not started |
+| P4 Evaluation + polish | Metrics, judge, ablations, report, README results | Dataset written (`eval/qa_dataset.jsonl`, 30 questions); rest not started |
 
 ## Quickstart (Windows PowerShell; use `source .venv/bin/activate` on macOS/Linux)
 
