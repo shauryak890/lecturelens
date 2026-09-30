@@ -8,6 +8,7 @@ sentence-transformers
 chromadb
 rank-bm25
 snowballstemmer            # optional BM25 stemming (retrieval.bm25.stemming)
+rapidocr                   # OCR for scanned PDF pages (ingestion.use_ocr), used by pymupdf4llm
 numpy
 tenacity
 streamlit

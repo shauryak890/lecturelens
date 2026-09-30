@@ -94,3 +94,39 @@ def test_lines_differing_only_in_numbers_count_as_repeated(cfg: IngestionCfg) ->
     cleaned = clean_pages(_pages(texts), cfg)
     assert all("of 20" not in p.text for p in cleaned)
     assert [p.text for p in cleaned] == [body(i) for i in range(4)]
+
+
+def test_repeated_line_glued_inside_another_line_is_stripped(cfg: IngestionCfg) -> None:
+    """Regression: PDF extraction glued a watermark onto a content line on one page only."""
+    mark = "Downloaded by Some Student (student@example.edu)"
+    texts = [f"{body(i)}\n{mark}" for i in range(1, 5)]
+    texts[0] = f"{body(0)} {mark}"  # page 1: watermark on the same line as real text
+    cleaned = clean_pages(_pages(texts), cfg)
+    assert all("Downloaded by" not in p.text for p in cleaned)
+    assert cleaned[0].text == body(0)  # the content before it survives intact
+
+
+def test_embedded_stripping_matches_masked_page_numbers(cfg: IngestionCfg) -> None:
+    footer = "Course DSE4150 | Manipal University Jaipur | slide {n}"
+    texts = [f"{body(i)}\n{footer.format(n=i + 3)}" for i in range(4)]
+    texts[1] = f"{body(1)} {footer.format(n=99)}"
+    cleaned = clean_pages(_pages(texts), cfg)
+    assert [p.text for p in cleaned] == [body(i) for i in range(4)]
+
+
+def test_short_repeated_lines_are_not_removed_inside_other_lines(cfg: IngestionCfg) -> None:
+    # "Q&A" repeats on every page but is shorter than the substring minimum: only the
+    # standalone lines go; the same letters inside a sentence are untouched
+    texts = [f"Q&A\n{body(i)}" for i in range(4)]
+    texts.append("Q&A sessions are held weekly for this unit, with worked examples.")
+    cleaned = clean_pages(_pages(texts), cfg)
+    assert all(not p.text.startswith("Q&A\n") for p in cleaned)
+    assert cleaned[-1].text.startswith("Q&A sessions")
+
+
+def test_heading_hashes_do_not_collide_with_digit_masking(cfg: IngestionCfg) -> None:
+    # a repeated Markdown heading line must not turn "#" into a digit wildcard
+    texts = [f"## Unit overview and course goals\n{body(i)}" for i in range(4)]
+    texts.append("12 Unit overview and course goals were discussed in class today.")
+    cleaned = clean_pages(_pages(texts), cfg)
+    assert cleaned[-1].text.startswith("12 Unit overview")

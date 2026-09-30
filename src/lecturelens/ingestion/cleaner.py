@@ -13,6 +13,7 @@ _SPACE_RUN = re.compile(r"[ \t\f\v ]+")
 _BLANK_LINES = re.compile(r"\n{3,}")  # at most 2 consecutive newlines
 _DIGITS = re.compile(r"\d+")
 _NON_SPACE = re.compile(r"\S")
+_DIGIT_MASK = "\x00"  # stands in for digit runs in line keys
 
 
 def normalize_text(text: str) -> str:
@@ -29,8 +30,43 @@ def normalize_text(text: str) -> str:
 
 
 def _line_key(line: str) -> str:
-    """Key used to spot repeated lines: page numbers differ, so digits are masked."""
-    return _DIGITS.sub("#", line.strip().lower())
+    """Key used to spot repeated lines: page numbers differ, so digits are masked.
+
+    The mask is a NUL character, which never occurs in page text, so it cannot collide
+    with a literal "#" from a Markdown heading when the key is turned into a regex.
+    """
+    return _DIGITS.sub(_DIGIT_MASK, line.strip().lower())
+
+
+def _embedded_boilerplate(keys: set[str], min_chars: int) -> re.Pattern[str] | None:
+    """Regex matching repeated lines of at least ``min_chars`` inside a longer line.
+
+    PDF extraction sometimes glues a footer or watermark onto the end of a content line,
+    so exact line matching misses it on that page. Short keys are excluded so a repeated
+    "2" or "Q&A" never carves words out of real text. Masked digits match any number.
+    """
+    parts = [
+        r"\d+".join(re.escape(part) for part in key.split(_DIGIT_MASK))
+        for key in sorted(keys, key=len, reverse=True)  # longest first
+        if count_visible_chars(key) >= min_chars
+    ]
+    return re.compile("|".join(parts), re.IGNORECASE) if parts else None
+
+
+def _strip_boilerplate(text: str, drop: set[str], embedded: re.Pattern[str] | None) -> str:
+    """Remove repeated lines, and repeated text glued inside other lines."""
+    kept: list[str] = []
+    for line in text.split("\n"):
+        if line.strip() and _line_key(line) in drop:
+            continue
+        if embedded is not None and line.strip():
+            stripped = embedded.sub(" ", line)
+            if stripped != line:
+                line = _SPACE_RUN.sub(" ", stripped).strip()
+                if not line:
+                    continue
+        kept.append(line)
+    return _BLANK_LINES.sub("\n\n", "\n".join(kept)).strip()
 
 
 def find_repeated_lines(pages: list[Page], threshold: float, min_pages: int) -> set[str]:
@@ -83,13 +119,16 @@ def clean_pages(pages: list[Page], cfg: IngestionCfg) -> list[Page]:
         for doc_id, doc_pages in by_doc.items()
     }
 
+    embedded = {
+        doc_id: _embedded_boilerplate(keys, cfg.header_footer_substring_min_chars)
+        for doc_id, keys in repeated.items()
+    }
+
     cleaned: list[Page] = []
     for page in normalised:
-        drop = repeated[page.doc_id]
         text = page.text
-        if drop:
-            kept = [ln for ln in text.split("\n") if _line_key(ln) not in drop or not ln.strip()]
-            text = _BLANK_LINES.sub("\n\n", "\n".join(kept)).strip()
+        if repeated[page.doc_id]:
+            text = _strip_boilerplate(text, repeated[page.doc_id], embedded[page.doc_id])
         if count_visible_chars(text) >= cfg.min_page_chars:
             cleaned.append(page.model_copy(update={"text": text}))
     return cleaned

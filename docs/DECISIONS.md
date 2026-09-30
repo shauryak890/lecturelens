@@ -103,3 +103,25 @@ simpler option was preferred.
   package. Tests use a real Chroma store in a temp dir, so they stay offline and fast (~5 s).
 - **Chroma** runs with telemetry off and its built-in embedder disabled
   (`embedding_function=None`). Vectors are always passed in explicitly, using cosine space.
+
+### P1 follow-up after ingesting the real course PDFs
+
+- **Repeated lines glued inside other lines.** On one page of a downloaded PDF, a per-page
+  download watermark (a person's name and email address) came out on the same line as other
+  text. Exact line matching missed it and it was indexed. Repeated lines of at least
+  `ingestion.header_footer_substring_min_chars` (20) visible characters are now also removed
+  when they appear *inside* another line of the same document. The length minimum stops a
+  short repeated line (a bare page number, "Q&A") from cutting words out of real text.
+  Digits in line keys are now masked with a NUL character instead of "#", so a repeated
+  Markdown heading cannot turn its "#" into a digit wildcard.
+- **OCR for scanned pages (RapidOCR).** Pages 8-14 of one lecture-notes PDF were scanned
+  images, and pymupdf4llm skips OCR *silently* when no engine is installed. We added the
+  `rapidocr` package (pip only, ONNX models, no system install), which pymupdf4llm detects
+  automatically. pymupdf4llm decides per page, so text pages are not slowed down. It costs
+  ~3-4 s per scanned page on CPU. Toggle it with `ingestion.use_ocr`; changing the toggle
+  changes extracted text, so it requires `ingest --rebuild`. Tesseract was the alternative
+  but needs a system install on every machine, including the examiner's.
+- **Library console output.** PyMuPDF messages go to the `lecturelens.pymupdf` logger, the
+  RapidOCR logger is raised to WARNING, and stray `print()`s during PDF parsing are captured
+  and logged at DEBUG. The CLI progress display stays clean and the details are in
+  `logs/lecturelens.log`.

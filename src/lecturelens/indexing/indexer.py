@@ -79,6 +79,8 @@ def chunking_settings(settings: Settings) -> dict[str, Any]:
             "min_page_chars",
             "header_footer_threshold",
             "header_footer_min_pages",
+            "header_footer_substring_min_chars",
+            "use_ocr",
             "add_context_header",
         }
     )
@@ -200,7 +202,7 @@ class Indexer:
         report.new_chunks += len(chunks)
 
     def _parse_and_chunk(self, path: Path, doc_id: str) -> tuple[int, list[Chunk]]:
-        pages = load_pages(path, doc_id)
+        pages = load_pages(path, doc_id, use_ocr=self.settings.ingestion.use_ocr)
         cleaned = clean_pages(pages, self.settings.ingestion)
         chunks = chunk_pages(cleaned, self.counter, self.settings.ingestion)
         logger.info(

@@ -46,6 +46,8 @@ ingestion:
   min_page_chars: 20
   header_footer_threshold: 0.5       # fraction of pages a line must appear on to be stripped
   header_footer_min_pages: 3         # skip header/footer removal on shorter documents
+  header_footer_substring_min_chars: 20  # also strip repeated lines this long when glued inside other lines
+  use_ocr: true                      # OCR image-only PDF pages (needs rapidocr; slower)
   add_context_header: true           # prepend "file | heading path" to indexed text
 
 retrieval:

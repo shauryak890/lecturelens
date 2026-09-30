@@ -97,6 +97,8 @@ class IngestionCfg(_Cfg):
     min_page_chars: int = Field(ge=0)
     header_footer_threshold: float = Field(gt=0, le=1)
     header_footer_min_pages: int = Field(ge=2)
+    header_footer_substring_min_chars: int = Field(ge=1)
+    use_ocr: bool
     add_context_header: bool
 
     @model_validator(mode="after")
