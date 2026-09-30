@@ -30,6 +30,9 @@ logger = logging.getLogger(__name__)
 CHROMA_DIRNAME = "chroma"
 BM25_FILENAME = "bm25.pkl"
 MANIFEST_FILENAME = "manifest.json"
+# Bump whenever cleaning or chunking code changes the text or boundaries of chunks.
+# 2: inline HTML stripped, document-title headings left out of heading paths.
+INGEST_FORMAT_VERSION = 2
 
 
 class IndexPaths:
@@ -70,8 +73,12 @@ class IndexStats(BaseModel):
 
 
 def chunking_settings(settings: Settings) -> dict[str, Any]:
-    """Settings that change chunk boundaries or indexed text; a change requires a rebuild."""
-    return settings.ingestion.model_dump(
+    """Settings that change chunk boundaries or indexed text; a change requires a rebuild.
+
+    Includes :data:`INGEST_FORMAT_VERSION`, so indexes built by older cleaning/chunking code are
+    detected too (config values alone cannot reveal a code change).
+    """
+    return {"ingest_format_version": INGEST_FORMAT_VERSION} | settings.ingestion.model_dump(
         include={
             "chunk_size_tokens",
             "chunk_overlap_tokens",

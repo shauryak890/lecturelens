@@ -130,3 +130,21 @@ def test_heading_hashes_do_not_collide_with_digit_masking(cfg: IngestionCfg) -> 
     texts.append("12 Unit overview and course goals were discussed in class today.")
     cleaned = clean_pages(_pages(texts), cfg)
     assert cleaned[-1].text.startswith("12 Unit overview")
+
+
+def test_inline_html_formatting_is_stripped_keeping_text() -> None:
+    raw = "### **<mark>Case Study: Spelling</mark>**\nSee <u>Kallini et al.</u> and <MARK>x</MARK>"
+    assert normalize_text(raw) == "### **Case Study: Spelling**\nSee Kallini et al. and x"
+
+
+def test_breaks_comments_and_superscripts() -> None:
+    raw = "<!-- Start of picture text -->q0 q1<br>q2<br/>q3<!-- End of picture text -->"
+    assert normalize_text(raw) == "q0 q1 q2 q3"
+    assert normalize_text("L = a<sup>n</sup> b<sup>n</sup>, x<sub>i</sub>") == "L = a^n b^n, x_i"
+
+
+def test_non_formatting_angle_brackets_survive() -> None:
+    # n-gram sentence markers and fastText n-grams are content, not HTML
+    text = "Pad with <s> and </s>; n-grams <wh, whe, re>; a <b and c> d"
+    assert normalize_text(text) == text
+    assert normalize_text('<span style="color:red">red</span>') == "red"

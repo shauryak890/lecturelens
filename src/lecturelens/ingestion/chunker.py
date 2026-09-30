@@ -9,6 +9,7 @@ import logging
 import re
 from collections import Counter
 from dataclasses import dataclass
+from itertools import groupby
 from typing import Any, Protocol
 
 from lecturelens.config import IngestionCfg
@@ -118,15 +119,44 @@ def _clean_heading(title: str) -> str:
     return _EMPHASIS.sub("", title).strip()
 
 
-def _sections(text: str, stack: list[tuple[int, str]]) -> list[tuple[str, str]]:
+def document_title_line(pages: list[Page]) -> str | None:
+    """Return the heading line that is a multi-page document's title, if there is one.
+
+    A document title is the document's single shallowest heading, on its first page: e.g. a
+    deck whose title slide has the only ``#`` heading while every slide title is ``##``, or an
+    OCR'd site banner. It is excluded from heading paths; otherwise, because headings carry
+    over to later pages, it would prefix every section of the document (the file name already
+    identifies the document). Single-page documents keep their top heading.
+    """
+    if len(pages) < 2:
+        return None
+    headings = [
+        (i, len(m.group(1)), line)
+        for i, page in enumerate(pages)
+        for line in page.text.split("\n")
+        if (m := _HEADING.match(line))
+    ]
+    if not headings:
+        return None
+    top = min(level for _, level, _ in headings)
+    at_top = [(i, line) for i, level, line in headings if level == top]
+    if len(at_top) == 1 and at_top[0][0] == 0:
+        return at_top[0][1]
+    return None
+
+
+def _sections(
+    text: str, stack: list[tuple[int, str]], ignore_heading: str | None = None
+) -> list[tuple[str, str]]:
     """Split page text at Markdown headings into ``(heading_path, section_text)``.
 
     ``stack`` holds ``(level, title)`` of open headings and is updated in place, so a page
-    that continues a section inherits the heading path from earlier pages.
+    that continues a section inherits the heading path from earlier pages. A line equal to
+    ``ignore_heading`` (the document title) stays in the text but opens no section.
     """
     sections: list[tuple[str, list[str]]] = []
     for line in text.split("\n"):
-        match = _HEADING.match(line)
+        match = None if line == ignore_heading else _HEADING.match(line)
         if match:
             level, title = len(match.group(1)), _clean_heading(match.group(2))
             while stack and stack[-1][0] >= level:
@@ -229,7 +259,8 @@ def chunk_pages(pages: list[Page], counter: TokenCounter, cfg: IngestionCfg) -> 
 
     Args:
         pages: Cleaned pages, in document order (several documents may be mixed; the heading
-            path resets whenever ``doc_id`` changes).
+            path resets whenever ``doc_id`` changes, and each document's title heading is
+            left out of heading paths, see :func:`document_title_line`).
         counter: Token counter matching the embedding model.
         cfg: Ingestion settings (chunk size, overlap, minimum chunk size).
 
@@ -237,14 +268,21 @@ def chunk_pages(pages: list[Page], counter: TokenCounter, cfg: IngestionCfg) -> 
         Chunks with ids ``"{doc_id}:{page}:{index}"``; ``chunk_index`` counts within the page.
     """
     chunks: list[Chunk] = []
+    for _, doc_pages in groupby(pages, key=lambda p: p.doc_id):
+        chunks.extend(_chunk_document(list(doc_pages), counter, cfg))
+    logger.debug("Chunked %d pages into %d chunks", len(pages), len(chunks))
+    return chunks
+
+
+def _chunk_document(pages: list[Page], counter: TokenCounter, cfg: IngestionCfg) -> list[Chunk]:
+    """Chunk the pages of one document (heading paths carry over between its pages)."""
+    chunks: list[Chunk] = []
     stack: list[tuple[int, str]] = []
-    current_doc: str | None = None
+    title = document_title_line(pages)
     for page in pages:
-        if page.doc_id != current_doc:
-            stack, current_doc = [], page.doc_id
         pieces = [
             piece
-            for heading, text in _sections(page.text, stack)
+            for heading, text in _sections(page.text, stack, ignore_heading=title)
             for piece in _split_recursive(text, heading, counter, cfg.chunk_size_tokens)
         ]
         for index, draft in enumerate(_pack(pieces, cfg, counter)):
@@ -261,5 +299,4 @@ def chunk_pages(pages: list[Page], counter: TokenCounter, cfg: IngestionCfg) -> 
                     n_tokens=counter.count(text),
                 )
             )
-    logger.debug("Chunked %d pages into %d chunks", len(pages), len(chunks))
     return chunks

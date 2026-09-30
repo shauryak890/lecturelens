@@ -15,15 +15,45 @@ _DIGITS = re.compile(r"\d+")
 _NON_SPACE = re.compile(r"\S")
 _DIGIT_MASK = "\x00"  # stands in for digit runs in line keys
 
+# pymupdf4llm emits a little inline HTML: highlights (<mark>), underlines (<u>), line breaks
+# inside table cells and picture text (<br>), superscripts (<sup>) and HTML comments around
+# OCR'd picture text. Only this whitelist of formatting tags is touched, so angle-bracket
+# text that is content (e.g. the sentence markers <s> and </s>) survives.
+_HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
+_HTML_BREAK = re.compile(r"<br\s*/?>", re.IGNORECASE)
+_HTML_SUP = re.compile(r"<sup>(.*?)</sup>", re.IGNORECASE | re.DOTALL)
+_HTML_SUB = re.compile(r"<sub>(.*?)</sub>", re.IGNORECASE | re.DOTALL)
+# Bare tags only (pymupdf4llm emits no attributes), so maths such as "x <b and y> c" is kept;
+# span/font are only matched with real attributes (containing "=").
+_HTML_FORMATTING = re.compile(
+    r"</?(?:mark|u|b|i|em|strong|small|big|ins|del|strike|span|font)>"
+    r"|<(?:span|font)\s[^<>]*=[^<>]*>",
+    re.IGNORECASE,
+)
+
+
+def strip_inline_html(text: str) -> str:
+    """Remove formatting tags and comments, keeping their text.
+
+    ``<sup>n</sup>`` becomes ``^n`` and ``<sub>i</sub>`` becomes ``_i`` so that exponents
+    such as ``a<sup>n</sup>`` keep their meaning; ``<br>`` becomes a space.
+    """
+    text = _HTML_COMMENT.sub(" ", text)
+    text = _HTML_BREAK.sub(" ", text)
+    text = _HTML_SUP.sub(r"^\1", text)
+    text = _HTML_SUB.sub(r"_\1", text)
+    return _HTML_FORMATTING.sub("", text)
+
 
 def normalize_text(text: str) -> str:
     """Normalise one page of text.
 
-    Applies NFKC (ligatures such as "ﬁ" become "fi", full-width characters become ASCII),
-    joins words split by a line-end hyphen, collapses runs of spaces, strips each line and
-    keeps at most one blank line in a row.
+    Strips inline HTML (see :func:`strip_inline_html`), applies NFKC (ligatures such as "ﬁ"
+    become "fi", full-width characters become ASCII), joins words split by a line-end hyphen,
+    collapses runs of spaces, strips each line and keeps at most one blank line in a row.
     """
-    text = unicodedata.normalize("NFKC", text).replace("\r\n", "\n").replace("\r", "\n")
+    text = unicodedata.normalize("NFKC", strip_inline_html(text))
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = _HYPHEN_BREAK.sub(r"\1\2", text)
     lines = [_SPACE_RUN.sub(" ", line).strip() for line in text.split("\n")]
     return _BLANK_LINES.sub("\n\n", "\n".join(lines)).strip()

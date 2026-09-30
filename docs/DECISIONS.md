@@ -206,3 +206,38 @@ simpler option was preferred.
 - **Label sanity check** (retrieval only, no LLM, default hybrid + rerank, 23 questions
   without history): hit@1 16/23 and hit@5 23/23, so every gold page is retrievable. 3 of the
   5 unanswerable questions already abstain without an LLM call (all rerank scores below -5).
+
+### Heading noise from PDF extraction (after P2)
+
+- **Inline HTML is stripped in `normalize_text`.** pymupdf4llm emits `<mark>` (510 times in
+  the course PDFs), `<br>` (499), `<u>` (92), `<sup>` (32) and HTML comments around OCR'd
+  picture text. These polluted chunk text (sent to the LLM) and heading paths.
+  - Formatting tags are removed and their text kept.
+  - `<sup>n</sup>` becomes `^n` and `<sub>i</sub>` becomes `_i`, so `a^n b^n` keeps its
+    meaning; `<br>` becomes a space.
+  - Only a whitelist of *bare* tags is matched (span/font only with `=` attributes). The
+    n-gram markers `<s>`/`</s>`, fastText n-grams such as `<wh` and maths such as
+    `x <b and y> c` are content and survive.
+  - Side effect: prompt tokens per answer dropped by ~10% on the tokenization deck.
+- **Document titles are left out of heading paths.** A deck's title slide had the only
+  level-1 heading (`# ... CS224N/Ling284`), with every slide title at level 2. Because
+  headings carry over between pages, that title prefixed the path of all 76 slides. The OCR'd
+  Studocu banner (`# studocu`) did the same.
+  - Rule (`chunker.document_title_line`): in a multi-page document, if the shallowest
+    heading occurs exactly once and on the first page, it is the document title. It stays in
+    the page text but opens no section.
+  - Single-page notes keep their top heading ("Unit 2 > ..."), as do documents with several
+    top-level headings (the ToC PDF has 46).
+- **Index format version.** `INGEST_FORMAT_VERSION` (indexer.py) is part of the chunking
+  settings recorded in the manifest, so an index built by older cleaning/chunking *code* is
+  detected and `ingest` asks for `--rebuild`. Config values alone cannot reveal code changes.
+  Bump it whenever cleaning or chunking output changes (now 2).
+- **Known remaining noise** (no general rule fixes these without heuristics that would break
+  other documents):
+  - pymupdf4llm sometimes tags a sentence as a heading, and it then roots later pages.
+  - OCR marks table lines such as "min(4, 2, 3) = 2" as headings.
+  - Decks that mix `##` and `###` slide titles nest a slide under the previous slide's title.
+- **Result after `ingest --rebuild`:** 0 tags in text or headings. One figure-only page
+  (ToC p.41, OCR text "Figure 6 a a ob q1 b") now falls under `min_page_chars` and is dropped;
+  the HTML comment markers had kept it alive. Eval retrieval check unchanged (hit@1 16/23,
+  hit@5 23/23).

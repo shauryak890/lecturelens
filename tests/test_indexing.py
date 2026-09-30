@@ -225,3 +225,16 @@ def test_dimension_change_under_same_model_name_is_caught(cfg: Settings, corpus:
     (corpus / "new.md").write_bytes(b"# New\nA new note that must be embedded.\n")
     with pytest.raises(IndexMismatchError, match="32-dimensional"):
         _indexer(cfg, HashEmbedder(dim=16)).ingest(corpus)
+
+
+def test_ingest_format_change_requires_rebuild(
+    cfg: Settings, corpus: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Code changes to cleaning/chunking cannot show up in config, so a version does."""
+    from lecturelens.indexing import indexer as indexer_mod
+
+    _indexer(cfg).ingest(corpus)
+    monkeypatch.setattr(indexer_mod, "INGEST_FORMAT_VERSION", indexer_mod.INGEST_FORMAT_VERSION + 1)
+    with pytest.raises(IndexMismatchError, match="--rebuild"):
+        _indexer(cfg).ingest(corpus)
+    assert _indexer(cfg).ingest(corpus, rebuild=True).total_chunks == 2

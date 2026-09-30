@@ -3,7 +3,7 @@
 import pytest
 
 from lecturelens.config import IngestionCfg, Settings
-from lecturelens.ingestion.chunker import chunk_pages, indexed_text
+from lecturelens.ingestion.chunker import chunk_pages, document_title_line, indexed_text
 from lecturelens.schemas import Chunk, Page
 
 from .fakes import WhitespaceCounter
@@ -98,12 +98,53 @@ def test_heading_path_carries_across_pages_but_not_documents(cfg: IngestionCfg) 
     pages = [
         _page("# Unit 1\n" + _sentences(2, "a"), page=1),
         _page(_sentences(2, "b"), page=2),  # continuation slide without a heading
+        _page("# Unit 2\n" + _sentences(2, "e"), page=3),
         _page(_sentences(2, "c"), page=1, doc_id="d2"),
     ]
     chunks = chunk_pages(pages, COUNTER, cfg)
     by_page = {(c.doc_id, c.page): c.heading_path for c in chunks}
     assert by_page[("d1", 2)] == "Unit 1"
+    assert by_page[("d1", 3)] == "Unit 2"
     assert by_page[("d2", 1)] == ""
+
+
+def _deck(*slides: str) -> list[Page]:
+    return [_page(text, page=i) for i, text in enumerate(slides, start=1)]
+
+
+def test_deck_title_is_not_an_ancestor_of_every_slide(cfg: IngestionCfg) -> None:
+    """Regression: a title slide's only '#' heading prefixed all 76 slides of a lecture deck."""
+    deck = _deck(
+        "# **NLP with Deep Learning CS224N**\nGuest lecture: Tokenization",
+        "## Word tokenization\n" + _sentences(2, "w"),
+        _sentences(2, "x"),  # continuation slide keeps the previous slide's section
+        "## Subword tokenization\n" + _sentences(2, "s"),
+    )
+    assert document_title_line(deck) == "# **NLP with Deep Learning CS224N**"
+    chunks = chunk_pages(deck, COUNTER, cfg)
+    by_page = {c.page: c.heading_path for c in chunks}
+    assert by_page == {
+        1: "",
+        2: "Word tokenization",
+        3: "Word tokenization",
+        4: "Subword tokenization",
+    }
+    assert chunks[0].text.startswith("# **NLP with Deep Learning CS224N**")  # text is kept
+
+
+def test_top_heading_is_not_a_title_when_it_is_not_unique(cfg: IngestionCfg) -> None:
+    deck = _deck("# Unit 1\n" + _sentences(2, "a"), "# Unit 2\n" + _sentences(2, "b"))
+    assert document_title_line(deck) is None
+    assert [c.heading_path for c in chunk_pages(deck, COUNTER, cfg)] == ["Unit 1", "Unit 2"]
+
+
+def test_top_heading_is_not_a_title_when_not_on_the_first_page() -> None:
+    deck = _deck(_sentences(2, "a"), "# Only heading\n" + _sentences(2, "b"))
+    assert document_title_line(deck) is None
+
+
+def test_single_page_document_keeps_its_top_heading() -> None:
+    assert document_title_line(_deck("# Unit 3: Word Embeddings\n## Skip-gram\ntext")) is None
 
 
 def test_tiny_tail_merged_into_predecessor(cfg: IngestionCfg) -> None:
