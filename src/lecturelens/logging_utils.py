@@ -44,8 +44,21 @@ class SecretRedactingFilter(logging.Filter):
         return True
 
 
+class ConsoleFormatter(logging.Formatter):
+    """Formatter that drops tracebacks: the console gets one line, the log file gets the rest."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        """Format ``record`` without its exception/stack information."""
+        record = logging.makeLogRecord(record.__dict__)
+        record.exc_info = record.exc_text = record.stack_info = None
+        return super().format(record)
+
+
 def setup_logging(level: str, log_dir: Path, secret_env_vars: Iterable[str] = ()) -> None:
     """Configure the package logger to write to stderr and ``log_dir/lecturelens.log``.
+
+    The stderr handler shows warnings and errors as single lines (no tracebacks); the file
+    handler records everything at ``level``, tracebacks included.
 
     Safe to call more than once (handlers are replaced, not duplicated).
 
@@ -63,12 +76,12 @@ def setup_logging(level: str, log_dir: Path, secret_env_vars: Iterable[str] = ()
         handler.close()
 
     redactor = SecretRedactingFilter(secret_env_vars)
-    formatter = logging.Formatter(LOG_FORMAT)
     stream_handler = logging.StreamHandler()
     stream_handler.setLevel(logging.WARNING)  # keep the console quiet; details go to the file
+    stream_handler.setFormatter(ConsoleFormatter(LOG_FORMAT))
     file_handler = logging.FileHandler(log_dir / APP_LOG_NAME, encoding="utf-8")
+    file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
     for handler in (stream_handler, file_handler):
-        handler.setFormatter(formatter)
         handler.addFilter(redactor)
         logger.addHandler(handler)
 

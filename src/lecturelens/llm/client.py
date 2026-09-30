@@ -60,7 +60,10 @@ def list_models(cfg: LLMCfg, api_key: str, *, generate_only: bool = True) -> lis
             f"Listing models is only supported for provider 'gemini', not {cfg.provider!r}"
         )
     try:
-        raw_models = list(_gemini_client(cfg, api_key).models.list())
+        # Keep the Client referenced for the whole call: genai.Client closes its HTTP connection
+        # when garbage-collected, so `_gemini_client(...).models.list()` fails intermittently.
+        with _gemini_client(cfg, api_key) as client:
+            raw_models = list(client.models.list())
     except genai_errors.APIError as exc:
         if exc.code in AUTH_ERROR_CODES:
             raise LLMError(

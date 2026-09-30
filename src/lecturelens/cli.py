@@ -14,7 +14,7 @@ from rich.table import Table
 
 from lecturelens.config import DEFAULT_CONFIG_PATH, Settings, load_settings
 from lecturelens.errors import LectureLensError
-from lecturelens.logging_utils import setup_logging
+from lecturelens.logging_utils import APP_LOG_NAME, setup_logging
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -67,7 +67,8 @@ def models(
 
     configured = {settings.llm.model, settings.llm.fallback_model, settings.llm.judge_model}
     table = Table(title=f"Models available to {settings.llm.api_key_env}")
-    table.add_column("Model ID", style="bold")
+    id_width = max((len(m.model_id) for m in found), default=0)
+    table.add_column("Model ID", style="bold", no_wrap=True, min_width=id_width)
     table.add_column("Display name")
     table.add_column("Input tokens", justify="right")
     table.add_column("Output tokens", justify="right")
@@ -90,3 +91,16 @@ def models(
     ):
         if model_id and model_id not in available:
             console.print(f"[yellow]Warning:[/] {role} = {model_id!r} is not in this list.")
+
+
+def run() -> None:
+    """Run the CLI; unexpected errors print one friendly line, the traceback goes to the log."""
+    try:
+        app(prog_name="lecturelens")
+    except Exception as exc:  # last-resort guard (NFR-3: users never see a stack trace)
+        logger.exception("Unhandled error")
+        err_console.print(
+            f"[bold red]Unexpected error:[/] {type(exc).__name__}: {exc}\n"
+            f"Full traceback written to {APP_LOG_NAME} in app.log_dir."
+        )
+        raise SystemExit(1) from None

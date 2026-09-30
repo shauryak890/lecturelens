@@ -37,3 +37,11 @@ simpler option was preferred.
   against the task's schema.
 - **Python version.** Development uses Python 3.11 (CLAUDE.md). `requires-python = ">=3.10"` and
   ruff `target-version = "py310"` follow SPEC section 14 / NFR-6.
+- **google-genai client lifetime.** `genai.Client.__del__` closes the shared HTTP transport, so
+  a client must stay referenced for as long as its `models` API is used. Calling
+  `genai.Client(...).models.list()` on a temporary failed with "Cannot send a request, as the
+  client has been closed". `list_models()` uses `with genai.Client(...) as client:`. The P2
+  `LLMClient` must keep one client as an attribute for its whole lifetime.
+- **No stack traces on the console (NFR-3).** `cli.run()` (used by `python -m lecturelens` and
+  the `lecturelens` script) catches unexpected errors and prints one line. The console log
+  handler drops tracebacks; the full traceback goes to `logs/lecturelens.log`.
