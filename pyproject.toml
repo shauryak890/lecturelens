@@ -19,6 +19,7 @@ dependencies = [
     "sentence-transformers",
     "chromadb",
     "rank-bm25",
+    "snowballstemmer",
     "numpy",
     "tenacity",
     "streamlit",

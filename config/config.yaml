@@ -45,6 +45,7 @@ ingestion:
   min_chunk_tokens: 40
   min_page_chars: 20
   header_footer_threshold: 0.5       # fraction of pages a line must appear on to be stripped
+  header_footer_min_pages: 3         # skip header/footer removal on shorter documents
   add_context_header: true           # prepend "file | heading path" to indexed text
 
 retrieval:

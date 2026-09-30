@@ -1,7 +1,8 @@
 """Typer command-line interface: ``python -m lecturelens <command>``.
 
 This is the only module that prints to the console (via Rich). Commands are added phase by
-phase: P0 ships ``models``; ingest, stats, ask, chat, quiz, summarize, flashcards and eval follow.
+phase: P0 ``models``; P1 ``ingest`` and ``stats``; ask, chat, quiz, summarize, flashcards and
+eval follow.
 """
 
 import logging
@@ -19,6 +20,7 @@ from lecturelens.logging_utils import APP_LOG_NAME, setup_logging
 logger = logging.getLogger(__name__)
 console = Console()
 err_console = Console(stderr=True)
+BYTES_PER_MB = 1024 * 1024
 
 app = typer.Typer(
     name="lecturelens",
@@ -47,6 +49,81 @@ def main(
         raise _fail(exc) from exc
     setup_logging(settings.app.log_level, settings.app.log_dir, [settings.llm.api_key_env])
     ctx.obj = settings
+
+
+@app.command()
+def ingest(
+    ctx: typer.Context,
+    path: Annotated[
+        Path | None, typer.Option("--path", "-p", help="Folder to ingest [default: app.data_dir].")
+    ] = None,
+    sample: Annotated[
+        bool, typer.Option("--sample", help="Ingest the bundled sample notes (app.sample_dir).")
+    ] = False,
+    rebuild: Annotated[
+        bool, typer.Option("--rebuild", help="Drop the index and re-index from scratch.")
+    ] = False,
+) -> None:
+    """Parse, chunk, embed and index PDF/Markdown/text files. Unchanged files are skipped."""
+    from lecturelens.indexing.indexer import build_indexer
+
+    settings: Settings = ctx.obj
+    folder = settings.app.sample_dir if sample else (path or settings.app.data_dir)
+    try:
+        with console.status("Loading embedding model (first run downloads it)..."):
+            indexer = build_indexer(settings)
+        with console.status("Indexing...") as status:
+            report = indexer.ingest(
+                folder, rebuild=rebuild, on_file=lambda f: status.update(f"Indexing {f.name}...")
+            )
+    except LectureLensError as exc:
+        raise _fail(exc) from exc
+
+    for name in report.indexed:
+        console.print(f"[green]indexed[/]   {name}")
+    for name in report.skipped:
+        console.print(f"[dim]unchanged[/] {name}")
+    for name, original in report.duplicates.items():
+        console.print(f"[yellow]duplicate[/] {name} (same content as {original})")
+    for name, error in report.failed.items():
+        console.print(f"[red]failed[/]    {name}: {error}")
+    console.print(
+        f"\n{len(report.indexed)} file(s) indexed, {report.new_chunks} new chunks, "
+        f"{report.total_chunks} chunks in index ({report.seconds:.1f}s)."
+    )
+    if report.failed:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def stats(ctx: typer.Context) -> None:
+    """Show indexed documents, chunk counts, average chunk size and index size."""
+    from lecturelens.indexing.indexer import index_stats
+
+    settings: Settings = ctx.obj
+    try:
+        s = index_stats(settings)
+    except LectureLensError as exc:
+        raise _fail(exc) from exc
+    if not s.n_docs:
+        console.print("The index is empty. Run [bold]python -m lecturelens ingest --sample[/].")
+        return
+
+    table = Table(title="Indexed documents")
+    table.add_column("File", style="bold")
+    for column in ("Pages", "Chunks", "Tokens"):
+        table.add_column(column, justify="right")
+    table.add_column("Indexed at (UTC)")
+    for f in s.files:
+        table.add_row(f.file_name, str(f.n_pages), str(f.n_chunks), str(f.n_tokens), f.indexed_at)
+    console.print(table)
+    console.print(
+        f"Documents: {s.n_docs}   Pages: {s.n_pages}   Chunks: {s.n_chunks}   "
+        f"Avg tokens/chunk: {s.avg_tokens_per_chunk:.0f}\n"
+        f"Embedding model: {s.embedding_model} (dim={s.dim})   "
+        f"BM25: {'ready' if s.bm25_ready else 'missing'}   "
+        f"Index size: {s.index_bytes / BYTES_PER_MB:.1f} MB"
+    )
 
 
 @app.command()

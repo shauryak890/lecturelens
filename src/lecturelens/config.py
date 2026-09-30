@@ -96,6 +96,7 @@ class IngestionCfg(_Cfg):
     min_chunk_tokens: int = Field(ge=0)
     min_page_chars: int = Field(ge=0)
     header_footer_threshold: float = Field(gt=0, le=1)
+    header_footer_min_pages: int = Field(ge=2)
     add_context_header: bool
 
     @model_validator(mode="after")
