@@ -26,3 +26,6 @@ htmlcov/
 .idea/
 .vscode/
 .DS_Store
+
+# Local Claude Code / editor settings
+.claude/

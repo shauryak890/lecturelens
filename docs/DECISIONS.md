@@ -241,3 +241,50 @@ simpler option was preferred.
   (ToC p.41, OCR text "Figure 6 a a ob q1 b") now falls under `min_page_chars` and is dropped;
   the HTML comment markers had kept it alive. Eval retrieval check unchanged (hit@1 16/23,
   hit@5 23/23).
+
+## P3 - Study tools and UI
+
+- **Scope.** Every tool takes a `Scope`: a topic (the best chunks are retrieved with the
+  normal hybrid pipeline) or a document. Document chunks are sampled *evenly* from first to
+  last, so a summary covers the whole lecture rather than the first few slides. The scope
+  label (the topic, or the document's file name) is passed into the prompt template variable
+  each task already uses (`{topic}` or `{scope}`), so no prompt text lives in Python.
+- **One shared helper.** `StudyTool._retrieve_and_generate()` gathers chunks, builds the
+  numbered context within `retrieval.max_context_tokens`, runs the prompt-file task and
+  returns the sources. Quiz, summary and flashcards differ only in their post-checks.
+- **Quiz post-checks** (deterministic, after the single LLM call):
+  - Each question must have 4 distinct non-empty options and no "all/none of the above".
+  - At least one valid source id is required; ungrounded questions are dropped, not shown.
+  - Near-duplicates are removed by word-set Jaccard >= `quiz.dedup_similarity` (0.8, new
+    config key).
+  - The quiz is capped at `quiz.max_n`.
+  - Options are shuffled with `random.Random(quiz.seed)`: the answer is not always "A", and
+    the same quiz is reproducible.
+  - Dropped questions are reported as notes in the UI and CLI.
+- **Summary and flashcards** strip source ids that do not exist. Flashcards with empty sides
+  or duplicate fronts are dropped. The CSV has `front, back, source` columns (Anki: Import >
+  Text file, comma-separated, first row is a header). `source` is "file p.N" joined by "; ".
+- **`lecturelens.services.Services`** is the single factory (SPEC 14). Components are
+  `cached_property` and built on first use: the app opens and the Library works without an
+  API key or any model loaded. The embedder and Chroma store are *shared* by indexing and
+  retrieval, so the model loads once and new documents are searchable immediately. After an
+  ingest or delete, the in-memory BM25 index is reloaded.
+- **Deleting a document** removes it from the index (chunks, manifest, BM25), not from disk.
+  Ingesting its folder again re-adds it. That keeps the UI from deleting the user's files.
+- **CLI.** `quiz` is interactive by default (`--show-answers` prints the key, `--out` saves
+  JSON), `summarize`, and `flashcards --csv`. `--doc` accepts a file name or any unique part
+  of it. All model and document text is escaped before Rich prints it: "D[i][0]" in a
+  generated flashcard was rendered as "D[0]" because Rich read "[i]" as an italic tag.
+- **Streamlit app** (`app/streamlit_app.py`) only lays out widgets and calls `Services`.
+  - Uploaded files are saved into `app.data_dir` (git-ignored) and that folder is ingested,
+    so the CLI and the UI share one library.
+  - `Services` is held with `st.cache_resource`. Chat history, the current quiz and results
+    live in `st.session_state`.
+  - Every action goes through `run_safely`, which shows `st.error` with the package's
+    friendly message (e.g. a missing `GEMINI_API_KEY`) and logs anything unexpected; the UI
+    never shows a stack trace (NFR-3).
+  - The Ask tab uses the sidebar's answer style, retrieval mode, rerank toggle and document
+    filter. Source cards are expanders; cited sources are pinned.
+- **App tests** use Streamlit's `AppTest` (headless): an empty library, an answer rendered
+  with badge and source cards (stubbed pipeline), a missing API key shown as an error, and
+  quiz generate/submit/score. They run offline in a few seconds.

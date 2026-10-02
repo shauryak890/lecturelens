@@ -13,7 +13,7 @@ DSE4150 (Natural Language Processing) course project. The full specification is 
 | P0 Setup | Scaffold, config + prompt files, schemas, settings loader, PromptRegistry, `models` command | Done |
 | P1 Ingestion + indexing | Loader, cleaner, chunker, embedder, ChromaDB, BM25, manifest, `ingest`/`stats`, sample notes | Done |
 | P2 Retrieval + RAG | RRF, reranker, hybrid retriever, LLM client, citations, pipeline, `ask`/`chat` | Done |
-| P3 Tools + UI | Quiz, summary, flashcards, Streamlit app | Not started |
+| P3 Tools + UI | Quiz, summary, flashcards (CLI + CSV export), Streamlit app | Done |
 | P4 Evaluation + polish | Metrics, judge, ablations, report, README results | Dataset written (`eval/qa_dataset.jsonl`, 30 questions); rest not started |
 
 ## Quickstart (Windows PowerShell; use `source .venv/bin/activate` on macOS/Linux)
@@ -29,6 +29,10 @@ python -m lecturelens ingest --sample   # or put PDFs in data/raw and run: inges
 python -m lecturelens stats
 python -m lecturelens ask "What is minimum edit distance?" --debug
 python -m lecturelens chat            # follow-up questions; /clear, /exit
+python -m lecturelens quiz --topic "finite-state transducers" --n 5
+python -m lecturelens summarize --doc "PPT1"
+python -m lecturelens flashcards --topic "minimum edit distance" --csv cards.csv
+streamlit run app/streamlit_app.py    # Library | Ask | Quiz | Summary & Flashcards | About
 ```
 
 The first `ingest` downloads the bge-small embedding model (~130 MB) once; later runs load it
