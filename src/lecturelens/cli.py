@@ -1,19 +1,21 @@
 """Typer command-line interface: ``python -m lecturelens <command>``.
 
 This is the only module that prints to the console (via Rich). Commands are added phase by
-phase: P0 ``models``; P1 ``ingest`` and ``stats``; P2 ``ask`` and ``chat``; quiz, summarize,
-flashcards and eval follow. Heavy modules are imported inside commands so ``--help`` is fast.
+phase: P0 ``models``; P1 ``ingest`` and ``stats``; P2 ``ask`` and ``chat``; P3 ``quiz``,
+``summarize`` and ``flashcards``; ``eval`` follows. Heavy modules are imported inside
+commands so ``--help`` is fast.
 """
 
 import io
 import logging
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Literal
 
 import typer
 from rich.console import Console
 from rich.markdown import Markdown
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 
@@ -30,6 +32,9 @@ from lecturelens.schemas import AskResult, ChatTurn
 
 if TYPE_CHECKING:
     from lecturelens.rag.pipeline import RAGPipeline
+    from lecturelens.schemas import RetrievedChunk
+    from lecturelens.services import Services
+    from lecturelens.tools.base import Scope
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -56,7 +61,7 @@ def _tolerant_console_streams() -> None:
 
 
 def _fail(exc: LectureLensError) -> typer.Exit:
-    err_console.print(f"[bold red]Error:[/] {exc}")
+    err_console.print(f"[bold red]Error:[/] {escape(str(exc))}")
     return typer.Exit(code=1)
 
 
@@ -101,19 +106,21 @@ def ingest(
             indexer = build_indexer(settings)
         with console.status("Indexing...") as status:
             report = indexer.ingest(
-                folder, rebuild=rebuild, on_file=lambda f: status.update(f"Indexing {f.name}...")
+                folder,
+                rebuild=rebuild,
+                on_file=lambda f: status.update(f"Indexing {escape(f.name)}..."),
             )
     except LectureLensError as exc:
         raise _fail(exc) from exc
 
     for name in report.indexed:
-        console.print(f"[green]indexed[/]   {name}")
+        console.print(f"[green]indexed[/]   {escape(name)}")
     for name in report.skipped:
-        console.print(f"[dim]unchanged[/] {name}")
+        console.print(f"[dim]unchanged[/] {escape(name)}")
     for name, original in report.duplicates.items():
-        console.print(f"[yellow]duplicate[/] {name} (same content as {original})")
+        console.print(f"[yellow]duplicate[/] {escape(name)} (same content as {escape(original)})")
     for name, error in report.failed.items():
-        console.print(f"[red]failed[/]    {name}: {error}")
+        console.print(f"[red]failed[/]    {escape(name)}: {escape(error)}")
     console.print(
         f"\n{len(report.indexed)} file(s) indexed, {report.new_chunks} new chunks, "
         f"{report.total_chunks} chunks in index ({report.seconds:.1f}s)."
@@ -142,7 +149,9 @@ def stats(ctx: typer.Context) -> None:
         table.add_column(column, justify="right")
     table.add_column("Indexed at (UTC)")
     for f in s.files:
-        table.add_row(f.file_name, str(f.n_pages), str(f.n_chunks), str(f.n_tokens), f.indexed_at)
+        table.add_row(
+            escape(f.file_name), str(f.n_pages), str(f.n_chunks), str(f.n_tokens), f.indexed_at
+        )
     console.print(table)
     console.print(
         f"Documents: {s.n_docs}   Pages: {s.n_pages}   Chunks: {s.n_chunks}   "
@@ -191,16 +200,16 @@ def _render_result(result: AskResult, debug: bool) -> None:
             label = f"[bold]S{i}[/]" if i in cited else f"[dim]S{i}[/]"
             table.add_row(
                 label,
-                chunk.file_name,
+                escape(chunk.file_name),
                 str(chunk.page),
-                chunk.heading_path,
+                escape(chunk.heading_path),
                 f"{src.score:.3f}",
                 ranks,
             )
         console.print(table)
     if debug:
         if result.standalone_question != result.question:
-            console.print(f"[dim]Standalone question:[/] {result.standalone_question}")
+            console.print(f"[dim]Standalone question:[/] {escape(result.standalone_question)}")
         timings = "  ".join(
             f"{k.removesuffix('_ms')} {v:.0f} ms" for k, v in result.timings_ms.items()
         )
@@ -276,10 +285,164 @@ def chat(
                     rerank=False if no_rerank else None,
                 )
         except LectureLensError as exc:
-            err_console.print(f"[bold red]Error:[/] {exc}")
+            err_console.print(f"[bold red]Error:[/] {escape(str(exc))}")
             continue
         _render_result(result, debug)
         history.append(ChatTurn(question=question, answer=result.response.answer))
+
+
+# ---------------------------------------------------------------- study tools (P3)
+
+TopicOpt = Annotated[str | None, typer.Option("--topic", "-t", help="Topic to cover.")]
+DocOpt = Annotated[
+    str | None,
+    typer.Option("--doc", "-d", help="Indexed file name (a unique part of it is enough)."),
+]
+OPTION_LETTERS = "ABCD"
+
+
+def _services(settings: Settings) -> "Services":
+    from lecturelens.services import Services
+
+    return Services(settings)
+
+
+def _scope(settings: Settings, topic: str | None, doc: str | None) -> "Scope":
+    """Build a study-tool scope from --topic/--doc (exactly one is required)."""
+    from lecturelens.indexing.indexer import find_document
+    from lecturelens.tools.base import Scope
+
+    if bool(topic) == bool(doc):
+        err_console.print("[bold red]Error:[/] give exactly one of --topic or --doc.")
+        raise typer.Exit(code=2)
+    if doc:
+        return Scope(doc_id=find_document(settings, doc).doc_id)
+    return Scope(topic=topic)
+
+
+def _refs(ids: list[int], sources: "list[RetrievedChunk]") -> str:
+    """Render source ids as ``S1 notes.pdf p.3, S2 ...``."""
+    from lecturelens.tools.flashcards import source_label
+
+    return ", ".join(f"S{i} {source_label(sources[i - 1])}" for i in ids)
+
+
+def _print_notes(notes: list[str]) -> None:
+    for note in notes:
+        console.print(f"[dim]{escape(note)}[/]")
+
+
+@app.command()
+def quiz(
+    ctx: typer.Context,
+    topic: TopicOpt = None,
+    doc: DocOpt = None,
+    n: Annotated[int | None, typer.Option("--n", "-n", min=1, help="Number of questions.")] = None,
+    difficulty: Annotated[
+        Literal["easy", "medium", "hard", "mixed"] | None,
+        typer.Option("--difficulty", help=r"\[default: quiz.default_difficulty]."),
+    ] = None,
+    out: Annotated[Path | None, typer.Option("--out", help="Save the quiz as JSON.")] = None,
+    show_answers: Annotated[
+        bool, typer.Option("--show-answers", help="Print answers instead of quizzing you.")
+    ] = False,
+) -> None:
+    """Generate a multiple-choice quiz from your notes and take it in the terminal."""
+    settings: Settings = ctx.obj
+    try:
+        scope = _scope(settings, topic, doc)
+        with console.status("Writing your quiz..."):
+            result = _services(settings).quiz.generate(scope, n=n, difficulty=difficulty)
+    except LectureLensError as exc:
+        raise _fail(exc) from exc
+    if out:
+        out.write_text(result.output.model_dump_json(indent=2), encoding="utf-8")
+        console.print(f"[dim]Saved to {escape(str(out))}[/]")
+    _print_notes(result.notes)
+    console.rule(f"Quiz: {escape(result.scope_label)}")
+    score = 0
+    for number, q in enumerate(result.output.questions, start=1):
+        console.print(
+            f"\n[bold]{number}. {q.question}[/] [dim]({q.difficulty}, {q.bloom_level})[/]"
+        )
+        for letter, option in zip(OPTION_LETTERS, q.options, strict=True):
+            console.print(f"   {letter}) {escape(option)}")
+        correct = OPTION_LETTERS[q.correct_index]
+        if not show_answers:
+            answer = console.input("   Your answer (A-D): ").strip().upper()[:1]
+            score += answer == correct
+            verdict = "[green]Correct![/]" if answer == correct else "[red]Not quite.[/]"
+            console.print(f"   {verdict}", end=" ")
+        console.print(f"   Answer: [bold]{correct}[/]. {escape(q.explanation)}")
+        console.print(f"   [dim]Sources: {escape(_refs(q.source_ids, result.sources))}[/]")
+    if not show_answers:
+        console.rule(f"Score: {score}/{len(result.output.questions)}")
+
+
+@app.command()
+def summarize(ctx: typer.Context, topic: TopicOpt = None, doc: DocOpt = None) -> None:
+    """Summarise a topic or a whole document: key points and glossary, with sources."""
+    settings: Settings = ctx.obj
+    try:
+        scope = _scope(settings, topic, doc)
+        with console.status("Summarising..."):
+            result = _services(settings).summarizer.summarize(scope)
+    except LectureLensError as exc:
+        raise _fail(exc) from exc
+    summary = result.output
+    console.rule(escape(summary.title))
+    console.print(Markdown(summary.overview))
+    console.print("\n[bold]Key points[/]")
+    for point in summary.key_points:
+        console.print(
+            f" - {escape(point.point)} [dim]({escape(_refs(point.source_ids, result.sources))})[/]"
+        )
+    table = Table(title="Glossary", title_justify="left")
+    table.add_column("Term", style="bold")
+    table.add_column("Definition")
+    table.add_column("Sources", style="dim")
+    for item in summary.glossary:
+        table.add_row(
+            escape(item.term),
+            escape(item.definition),
+            escape(_refs(item.source_ids, result.sources)),
+        )
+    console.print(table)
+
+
+@app.command()
+def flashcards(
+    ctx: typer.Context,
+    topic: TopicOpt = None,
+    doc: DocOpt = None,
+    n: Annotated[int | None, typer.Option("--n", "-n", min=1, help="Number of cards.")] = None,
+    csv_path: Annotated[
+        Path | None, typer.Option("--csv", help="Write front,back,source CSV (Anki import).")
+    ] = None,
+) -> None:
+    """Generate flashcards from your notes, optionally exporting them as CSV."""
+    from lecturelens.tools.flashcards import to_csv
+
+    settings: Settings = ctx.obj
+    try:
+        scope = _scope(settings, topic, doc)
+        with console.status("Writing flashcards..."):
+            result = _services(settings).flashcards.generate(scope, n=n)
+    except LectureLensError as exc:
+        raise _fail(exc) from exc
+    _print_notes(result.notes)
+    table = Table(title=f"Flashcards: {escape(result.scope_label)}", title_justify="left")
+    table.add_column("Front", style="bold")
+    table.add_column("Back")
+    table.add_column("Sources", style="dim")
+    for card in result.output.cards:
+        table.add_row(
+            escape(card.front), escape(card.back), escape(_refs(card.source_ids, result.sources))
+        )
+    console.print(table)
+    if csv_path:
+        csv_path.write_text(to_csv(result.output, result.sources), encoding="utf-8", newline="")
+        console.print(f"[dim]Saved {len(result.output.cards)} cards to {escape(str(csv_path))}[/]")
 
 
 @app.command()

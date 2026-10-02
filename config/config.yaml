@@ -81,7 +81,8 @@ quiz:
   max_n: 15
   default_difficulty: mixed
   context_chunks: 8
-  seed: 42
+  seed: 42                           # seeded option shuffle: the answer is not always A
+  dedup_similarity: 0.8              # word-overlap (Jaccard) above which two questions are duplicates
 
 summary:
   n_points: 7

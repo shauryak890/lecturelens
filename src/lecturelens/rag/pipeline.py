@@ -13,7 +13,7 @@ from pathlib import Path
 
 from lecturelens.config import AnswerMode, RetrievalMode, Settings
 from lecturelens.errors import IndexMismatchError, LLMBlockedError
-from lecturelens.indexing.embedder import build_embedder
+from lecturelens.indexing.embedder import Embedder, build_embedder
 from lecturelens.indexing.indexer import IndexPaths, load_or_build_bm25
 from lecturelens.indexing.manifest import REBUILD_HINT, Manifest
 from lecturelens.indexing.vector_store import VectorStore
@@ -237,21 +237,28 @@ class RAGPipeline:
         )
 
 
-def build_retriever(settings: Settings) -> HybridRetriever:
+def build_retriever(
+    settings: Settings, embedder: Embedder | None = None, store: VectorStore | None = None
+) -> HybridRetriever:
     """Open the index at ``app.index_dir`` and create the retriever (models load lazily).
+
+    Args:
+        settings: Application settings.
+        embedder: Share an embedder (e.g. with the indexer) so the model loads only once.
+        store: Share an open vector store.
 
     Raises:
         IndexMismatchError: If the index was built with a different embedding model.
     """
     paths = IndexPaths(settings.app.index_dir)
-    embedder = build_embedder(settings.embeddings)
+    embedder = embedder or build_embedder(settings.embeddings)
     manifest = Manifest.load(paths.manifest)
     if manifest.files and manifest.embedding_model != embedder.model_name:
         raise IndexMismatchError(
             f"The index was built with {manifest.embedding_model} but config uses "
             f"{embedder.model_name}. {REBUILD_HINT}"
         )
-    store = VectorStore(paths.chroma)
+    store = store or VectorStore(paths.chroma)
     reranker = CrossEncoderReranker(settings.retrieval.reranker_model, settings.embeddings.device)
     return HybridRetriever(
         embedder,

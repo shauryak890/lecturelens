@@ -153,6 +153,7 @@ class QuizCfg(_Cfg):
     default_difficulty: Literal["easy", "medium", "hard", "mixed"]
     context_chunks: int = Field(gt=0)
     seed: int
+    dedup_similarity: float = Field(gt=0, le=1)
 
     @model_validator(mode="after")
     def _default_within_max(self) -> "QuizCfg":

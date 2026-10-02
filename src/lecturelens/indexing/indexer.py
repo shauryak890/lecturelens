@@ -14,7 +14,7 @@ import numpy as np
 from pydantic import BaseModel
 
 from lecturelens.config import Settings
-from lecturelens.errors import IndexMismatchError, IngestionError
+from lecturelens.errors import IndexMismatchError, IngestionError, NoContentError
 from lecturelens.indexing.bm25_index import BM25Index
 from lecturelens.indexing.embedder import Embedder
 from lecturelens.indexing.manifest import FileEntry, Manifest
@@ -237,6 +237,28 @@ class Indexer:
         """Load the saved BM25 index, rebuilding it if missing or built with other settings."""
         return load_or_build_bm25(self.settings, self.store)
 
+    def delete_document(self, doc_id: str) -> str:
+        """Remove a document's chunks and manifest entry, then rebuild BM25.
+
+        The source file is not touched; re-running ``ingest`` on its folder indexes it again.
+
+        Returns:
+            The removed document's file name.
+
+        Raises:
+            NoContentError: If no indexed document has this ``doc_id``.
+        """
+        manifest = Manifest.load(self.paths.manifest)
+        key = manifest.find_doc(doc_id)
+        if key is None:
+            raise NoContentError(f"No indexed document with id {doc_id}")
+        entry = manifest.files.pop(key)
+        self.store.delete_doc(doc_id)
+        manifest.save(self.paths.manifest)
+        self.rebuild_bm25()
+        logger.info("Deleted %s (%d chunks) from the index", entry.file_name, entry.n_chunks)
+        return entry.file_name
+
 
 def rebuild_bm25(settings: Settings, store: VectorStore) -> BM25Index:
     """Build the BM25 index over every chunk in ``store`` and save it under ``app.index_dir``."""
@@ -259,16 +281,40 @@ def load_or_build_bm25(settings: Settings, store: VectorStore) -> BM25Index:
     return rebuild_bm25(settings, store)
 
 
-def build_indexer(settings: Settings) -> Indexer:
+def build_indexer(
+    settings: Settings, embedder: Embedder | None = None, store: VectorStore | None = None
+) -> Indexer:
     """Create an :class:`Indexer` with the configured embedder and its matching tokenizer.
 
-    Loads the embedding model (downloaded on first use, then cached by Hugging Face).
+    The embedding model loads lazily, on the first file that needs embedding.
+
+    Args:
+        settings: Application settings.
+        embedder: Share an embedder (e.g. with the retriever) so the model loads only once.
+        store: Share an open vector store.
     """
     from lecturelens.indexing.embedder import build_embedder
     from lecturelens.ingestion.chunker import HFTokenCounter
 
-    embedder = build_embedder(settings.embeddings)
-    return Indexer(settings, embedder, HFTokenCounter(settings.embeddings.model))
+    embedder = embedder or build_embedder(settings.embeddings)
+    return Indexer(settings, embedder, HFTokenCounter(settings.embeddings.model), store)
+
+
+def find_document(settings: Settings, name: str) -> FileEntry:
+    """Find an indexed document by file name (case-insensitive; a unique substring works).
+
+    Raises:
+        NoContentError: If no document, or more than one, matches ``name``.
+    """
+    entries = list(Manifest.load(IndexPaths(settings.app.index_dir).manifest).files.values())
+    wanted = name.strip().lower()
+    exact = [e for e in entries if e.file_name.lower() == wanted]
+    matches = exact or [e for e in entries if wanted in e.file_name.lower()]
+    if len(matches) == 1:
+        return matches[0]
+    names = ", ".join(sorted(e.file_name for e in (matches or entries))) or "none"
+    problem = "matches several documents" if matches else "matches no indexed document"
+    raise NoContentError(f"{name!r} {problem}. Indexed: {names}")
 
 
 def index_stats(settings: Settings, store: VectorStore | None = None) -> IndexStats:

@@ -103,3 +103,27 @@ def test_chat_keeps_history_and_clears_it(stub: StubPipeline) -> None:
     histories = [len(call["history"]) for call in stub.calls]
     assert histories == [0, 1, 0]  # second question sees the first turn; /clear resets
     assert stub.calls[1]["history"][0].question == "What is BPE?"
+
+
+def test_brackets_in_model_text_are_not_eaten_as_markup(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression: Rich read "[i]" in "D[i][0] = i" as an italic tag and dropped it."""
+    from lecturelens import services as services_mod
+    from lecturelens.schemas import Flashcard, FlashcardSet, Usage
+    from lecturelens.tools.base import StudyResult
+
+    card = Flashcard(front="MED table init?", back="D[i][0] = i and D[0][j] = j", source_ids=[1])
+    chunk = StubPipeline().ask("q").sources[0]
+
+    class StubTools:
+        def generate(self, scope, n=None):
+            return StudyResult(FlashcardSet(cards=[card]), [chunk], Usage(), "MED [notes]")
+
+    class StubServices:
+        def __init__(self, settings) -> None:
+            self.flashcards = StubTools()
+
+    monkeypatch.setattr(services_mod, "Services", StubServices)
+    result = _run("flashcards", "--topic", "MED")
+    assert result.exit_code == 0, result.output
+    assert "D[i][0] = i" in result.output and "D[0][j] = j" in result.output
+    assert "MED [notes]" in result.output
