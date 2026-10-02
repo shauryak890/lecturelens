@@ -22,9 +22,17 @@ ROW_LABELS = {
     "dense_only": "Dense only",
     "hybrid": "Hybrid (RRF)",
     "hybrid_rerank": "Hybrid + rerank",
-    DEFAULT_NAME: "Default config (hybrid + rerank)",
     MINIMAL_NAME: "Default, minimal prompt (no rules)",
 }
+
+
+def _label(report: EvalReport, name: str) -> str:
+    """Display name of a result row; the default row names the configuration it ran with."""
+    if name == DEFAULT_NAME:
+        retrieval = report.config["retrieval"]
+        rerank = " + rerank" if retrieval["rerank"] else ""
+        return f"Default config ({retrieval['mode']}{rerank})"
+    return ROW_LABELS.get(name, name)
 
 
 def _fmt(value: float | None, digits: int = 3) -> str:
@@ -66,7 +74,7 @@ def headline_table(report: EvalReport) -> list[str]:
         g = default_gen.metrics if default_gen and result.name == DEFAULT_NAME else {}
         rows.append(
             [
-                ROW_LABELS.get(result.name, result.name),
+                _label(report, result.name),
                 _fmt(m.get(lo)),
                 _fmt(m.get(hi)),
                 _fmt(m.get("mrr")),
@@ -116,7 +124,7 @@ def retrieval_section(report: EvalReport) -> list[str]:
     ]
     rows = [
         [
-            ROW_LABELS.get(r.name, r.name),
+            _label(report, r.name),
             *[_fmt(r.metrics.get(f"hit@{k}")) for k in ks],
             *[_fmt(r.metrics.get(f"recall@{k}")) for k in ks],
             _fmt(r.metrics.get(f"ndcg@{max(ks)}")),
@@ -212,7 +220,7 @@ def generation_section(report: EvalReport) -> list[str]:
         m = g.metrics
         rows.append(
             [
-                ROW_LABELS.get(g.name, g.name),
+                _label(report, g.name),
                 str(g.n_questions),
                 _fmt(m["faithfulness"]),
                 _fmt(m["relevancy"], 2),

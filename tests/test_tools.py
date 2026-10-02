@@ -187,6 +187,7 @@ def test_quiz_with_no_usable_question_raises(tiny_index: Indexer, registry: Prom
 def test_nothing_relevant_raises_without_llm_call(
     tiny_index: Indexer, registry: PromptRegistry
 ) -> None:
+    tiny_index.settings = tiny_index.settings.with_overrides({"retrieval.rerank": True})  # opt-in
     tool, llm = _tool(QuizGenerator, tiny_index, registry, {}, reranker=FakeReranker(offset=100.0))
     with pytest.raises(NoContentError, match="RLHF"):
         tool.generate(Scope(topic="RLHF"))

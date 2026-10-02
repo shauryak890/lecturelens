@@ -58,7 +58,7 @@ retrieval:
   top_k_bm25: 20
   rrf_k: 60
   weights: {dense: 1.0, bm25: 1.0}
-  rerank: true
+  rerank: false                      # off: hurt Hit@1/MRR on the course PDFs (eval/results/report.md)
   reranker_model: cross-encoder/ms-marco-MiniLM-L-6-v2
   rerank_candidates: 20
   final_k: 5

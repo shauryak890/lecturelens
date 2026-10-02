@@ -81,7 +81,13 @@ def test_all_rerank_scores_below_threshold_returns_nothing(tiny_index: Indexer) 
     assert _retriever(tiny_index, hopeless).retrieve(QUERY, rerank=True) == []
 
 
-def test_no_reranker_means_no_rerank(tiny_index: Indexer, settings: Settings) -> None:
-    assert settings.retrieval.rerank  # config default is on...
-    results = _retriever(tiny_index, None).retrieve(QUERY)
+def test_rerank_override_needs_a_reranker(tiny_index: Indexer, settings: Settings) -> None:
+    results = _retriever(tiny_index, None).retrieve(QUERY, rerank=True)  # no model configured
     assert results and {r.source for r in results} == {settings.retrieval.mode}
+
+
+def test_config_rerank_off_skips_the_reranker(tiny_index: Indexer, settings: Settings) -> None:
+    assert settings.retrieval.rerank is False  # default since the evaluation (see README)
+    reranker = FakeReranker()
+    results = _retriever(tiny_index, reranker).retrieve(QUERY)
+    assert results and reranker.calls == [] and {r.source for r in results} == {"hybrid"}

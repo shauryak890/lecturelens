@@ -170,8 +170,12 @@ RetrievalOpt = Annotated[
     RetrievalMode | None,
     typer.Option("--retrieval", "-r", help=r"Retrieval mode \[default: retrieval.mode]."),
 ]
-NoRerankOpt = Annotated[
-    bool, typer.Option("--no-rerank", help="Skip cross-encoder reranking for this run.")
+RerankOpt = Annotated[
+    bool | None,
+    typer.Option(
+        "--rerank/--no-rerank",
+        help=r"Turn cross-encoder reranking on or off for this run \[default: retrieval.rerank].",
+    ),
 ]
 DebugOpt = Annotated[bool, typer.Option("--debug", help="Show timings and token usage.")]
 CONFIDENCE_STYLE = {"high": "green", "medium": "yellow", "low": "red"}
@@ -230,7 +234,7 @@ def ask(
     question: Annotated[str, typer.Argument(help="Your question, in quotes.")],
     mode: ModeOpt = None,
     retrieval: RetrievalOpt = None,
-    no_rerank: NoRerankOpt = False,
+    rerank: RerankOpt = None,
     debug: DebugOpt = False,
 ) -> None:
     """Answer one question from your course material, with page-level citations."""
@@ -238,9 +242,7 @@ def ask(
     try:
         pipeline = _load_pipeline(settings)
         with console.status("Thinking (first question also loads the models)..."):
-            result = pipeline.ask(
-                question, mode=mode, retrieval_mode=retrieval, rerank=False if no_rerank else None
-            )
+            result = pipeline.ask(question, mode=mode, retrieval_mode=retrieval, rerank=rerank)
     except LectureLensError as exc:
         raise _fail(exc) from exc
     _render_result(result, debug)
@@ -251,7 +253,7 @@ def chat(
     ctx: typer.Context,
     mode: ModeOpt = None,
     retrieval: RetrievalOpt = None,
-    no_rerank: NoRerankOpt = False,
+    rerank: RerankOpt = None,
     debug: DebugOpt = False,
 ) -> None:
     """Interactive tutor with follow-up questions. Type /clear to reset, /exit to quit."""
@@ -282,7 +284,7 @@ def chat(
                     history=history,
                     mode=mode,
                     retrieval_mode=retrieval,
-                    rerank=False if no_rerank else None,
+                    rerank=rerank,
                 )
         except LectureLensError as exc:
             err_console.print(f"[bold red]Error:[/] {escape(str(exc))}")

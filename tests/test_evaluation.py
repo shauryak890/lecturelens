@@ -286,7 +286,7 @@ def test_runner_end_to_end_offline(
 
     md, js = write_report(report, tmp_path, n_examples=3)
     text = md.read_text(encoding="utf-8")
-    assert "| Default config (hybrid + rerank) | 1.000 | 1.000 |" in text
+    assert "| Default config (hybrid) | 1.000 | 1.000 |" in text
     assert "Default, minimal prompt (no rules) (2 q)" in text
     assert "### Failure analysis" in text and "should have abstained" not in text
     assert EvalReport.model_validate_json(js.read_text(encoding="utf-8")) == report

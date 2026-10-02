@@ -12,10 +12,10 @@ DSE4150 (Natural Language Processing) course project. Full specification:
 - **Grounded Q&A with page-level citations.** Every factual sentence cites `[S1]`, `[S2]`... and
   each source card shows the file, page, section and the exact excerpt used.
 - **Honest abstention.** Questions your notes don't cover get "I couldn't find this in your
-  course material", usually without spending an LLM call.
+  course material" instead of guessing.
 - **Follow-up questions** ("what about its limitations?") are rewritten into standalone queries.
-- **Hybrid retrieval:** BM25 + dense embeddings, fused with Reciprocal Rank Fusion and reranked by
-  a cross-encoder. Each stage can be switched off for ablations.
+- **Hybrid retrieval:** BM25 + dense embeddings fused with Reciprocal Rank Fusion; an optional
+  cross-encoder reranker (off by default, see the results). Each stage can be toggled for ablations.
 - **Study tools:** MCQ quizzes (scored, with explanations and sources), structured summaries with
   a glossary, and flashcards exportable as CSV for Anki.
 - **Real-world PDFs:** OCR for scanned pages, header/footer and watermark removal, page-accurate
@@ -27,44 +27,43 @@ DSE4150 (Natural Language Processing) course project. Full specification:
 
 Measured on 30 labelled questions over the course PDFs (25 answerable with gold pages,
 5 not covered by the notes; 7 factual, 7 conceptual, 4 comparison, 3 keyword, 2 follow-up pairs).
-Full report with per-question results and failure analysis:
-[eval/results/report.md](eval/results/report.md). Reproduce with
-`python -m lecturelens eval --ablations --chunk-sweep`.
+Full report with per-question results: [eval/results/report.md](eval/results/report.md).
+Reproduce with `python -m lecturelens eval --ablations --chunk-sweep`.
 
 | Config | Hit@1 | Hit@5 | MRR | Faithful. | Relev. (1-5) | Abstain acc. | p50 latency |
 |---|---|---|---|---|---|---|---|
-| Default config (hybrid + rerank) | 0.680 | 0.960 | 0.790 | 0.990 | 4.87 | 97% | 3,625 ms |
+| Default config (hybrid) | 0.800 | 1.000 | 0.873 | 1.000 | 5.00 | 100% | 3,150 ms |
 | BM25 only | 0.720 | 1.000 | 0.815 | - | - | - | - |
 | Dense only | 0.680 | 0.960 | 0.797 | - | - | - | - |
 | Hybrid (RRF) | 0.800 | 1.000 | 0.873 | - | - | - | - |
 | Hybrid + rerank | 0.680 | 0.960 | 0.790 | - | - | - | - |
-| Default, minimal prompt (no rules) (10 q) | - | - | - | 1.000 | 5.00 | 100% | 887 ms |
+| Default, minimal prompt (no rules) (10 q) | - | - | - | 1.000 | 5.00 | 100% | 3,255 ms |
 
-Generation (default config): **100% citation validity** (no invented `[S#]`), **100% citation
-hit rate** (every answerable question it answered cites a gold page), no repairs needed, and 3 of the
-5 off-syllabus questions were declined *without any LLM call* by the reranker threshold.
-~1,600 prompt tokens per answer.
+Generation (default config, all 30 questions): every answerable question answered with a gold page
+cited, **100% citation validity** (no invented `[S#]`, no repairs needed), all 5 off-syllabus
+questions declined, ~1,813 prompt tokens and ~3.1 s per answer.
 
 **Findings**
 
-- **Hybrid fusion beats either retriever alone.** RRF lifts Hit@1 from 0.68-0.72 (dense or
-  BM25 alone) to 0.80 and MRR to 0.873. Dense and BM25 fail on different questions, which is
-  the reason to fuse them.
-- **The cross-encoder reranker hurt on this corpus.** It lowered Hit@1 from 0.80 to 0.68 and
-  costs ~1.1 s per query on CPU. It also caused the only answerable question the system got
-  wrong (q25: the gold slide was in the top 5 before reranking and pushed out after). The
-  ms-marco cross-encoder was trained on web search queries, not lecture-slide fragments. It
-  is still useful as an abstention filter: it declines off-syllabus questions without an LLM
-  call. With 25 questions the gap is 3 questions at rank 1, so treat it as indicative.
-- **Chunk size barely matters for slide decks.** 400 and 600 tokens tie (most slides are
-  shorter than either); 200 is slightly worse. 400 is kept.
-- **The grounding rules showed no measurable effect on this model.** On the 10-question
-  ablation subset, the minimal prompt (no rules in the system prompt) also abstained correctly.
-  The answer template itself still asks for an `answerable` flag and `[S#]` citations, and 3
-  of the 5 off-syllabus questions never reach the LLM. The rules are cheap insurance against
-  weaker models rather than a measured gain here.
-- **LLM-judge caveat.** q06's faithfulness of 0.75 is a judge false negative: the "unsupported"
-  claim ("Turing machines define recursive languages") is stated on the cited page.
+- **Hybrid fusion beats either retriever alone.** RRF lifts Hit@1 from 0.68-0.72 (dense or BM25
+  alone) to 0.80 and MRR to 0.873; dense and BM25 fail on different questions.
+- **The cross-encoder reranker hurt, so it is off by default.** With reranking, Hit@1 dropped to
+  0.68 and MRR to 0.790, retrieval took ~1.1 s instead of ~20 ms, and one follow-up (q25) lost its
+  gold slide from the top 5, so the system wrongly said it was not in the notes. The ms-marco
+  cross-encoder was trained on web search queries, not lecture-slide fragments. Turning it off
+  fixed q25 and removed the only generation failure. Trade-off: off-syllabus questions now
+  always reach the LLM, which declined all 5 itself. Reranking stays available
+  (`retrieval.rerank`, `--rerank`, sidebar toggle).
+- **Chunk size barely matters for slide decks.** 400 and 600 tokens tie (most slides are shorter
+  than either), 200 is worse; 400 is kept.
+- **The grounding rules showed no measurable effect on this model.** The minimal prompt (no rules
+  in the system prompt) also declined all 5 off-syllabus questions and stayed fully cited, because
+  the answer template itself asks for an `answerable` flag and `[S#]` citations. The rules are
+  insurance for weaker models rather than a measured gain here.
+- **The benchmark is now at ceiling** for generation (faithfulness 1.00, relevancy 5.00): 30
+  questions cannot separate good configurations further. Harder, multi-hop questions are the
+  next step. LLM-judge scores also vary between runs (q06 scored 0.75 in an earlier run for a
+  claim stated on its cited page), so treat them comparatively.
 
 ## How it works
 
@@ -79,7 +78,7 @@ flowchart LR
   end
   subgraph Answering["Question answering"]
     Q[Question + history] --> R[Condense follow-up<br/>LLM call 1]
-    R --> S[Dense top-20 + BM25 top-20<br/>RRF k=60 + cross-encoder]
+    R --> S[Dense top-20 + BM25 top-20<br/>RRF k=60, optional rerank]
     S --> T[Numbered context S1..S5<br/>3,000-token budget]
     T --> U[Grounded answer<br/>LLM call 2, JSON]
     U --> V[Validate citations<br/>repair once]
@@ -92,8 +91,9 @@ flowchart LR
 2. **Index:** chunks are embedded locally with `BAAI/bge-small-en-v1.5` (no API quota) into
    ChromaDB, and a BM25 index is built over the same chunks.
 3. **Retrieve:** a follow-up is first condensed into a standalone question; then BM25 (exact terms,
-   acronyms) and dense search (meaning) run, are fused with RRF, and a cross-encoder reranks the top
-   20. If every candidate scores below a threshold, the system abstains without calling the LLM.
+   acronyms) and dense search (meaning) run and are fused with RRF. An optional cross-encoder can
+   rerank the top 20 and abstain without calling the LLM when every candidate scores below a
+   threshold; it is off by default because it lowered accuracy on the course PDFs.
 4. **Answer:** the top chunks become numbered excerpts; Gemini answers in JSON validated by Pydantic,
    citing excerpt numbers. Invalid citations are stripped; an uncited answer gets one repair call.
 
@@ -150,9 +150,9 @@ any key with an environment variable `LECTURELENS__SECTION__KEY` (e.g.
 | `llm.model` / `llm.fallback_model` | `gemini-3.8-flash` / `gemini-3.1-flash-lite` | check with `python -m lecturelens models` |
 | `llm.requests_per_minute` | 8 | client-side limit, below the free tier |
 | `retrieval.mode` | `hybrid` | `dense`, `bm25` or `hybrid` |
-| `retrieval.rerank` | `true` | cross-encoder reranking of the top 20 |
+| `retrieval.rerank` | `false` | cross-encoder reranking of the top 20 (off: see Results) |
 | `retrieval.final_k` / `max_context_tokens` | 5 / 3000 | excerpts per answer and their token budget |
-| `retrieval.min_rerank_score` | -5.0 | below this for all candidates: abstain without the LLM |
+| `retrieval.min_rerank_score` | -5.0 | with rerank on: abstain without the LLM below this |
 | `ingestion.chunk_size_tokens` / `chunk_overlap_tokens` | 400 / 60 | chunking (see the sweep) |
 | `ingestion.use_ocr` | `true` | OCR image-only PDF pages |
 
@@ -172,15 +172,15 @@ python -m lecturelens ingest --sample     # or put PDFs in data/raw and run: ing
 streamlit run app/streamlit_app.py
 ```
 
-Get a free key at aistudio.google.com. The first run downloads the embedding model (~130 MB) and,
-on the first question, the reranker (~90 MB); both are then cached locally.
+Get a free key at aistudio.google.com. The first run downloads the embedding model (~130 MB), which
+is then cached locally (the optional reranker, ~90 MB, downloads only if you turn it on).
 
 ## CLI usage
 
 ```
 python -m lecturelens ingest [--path data/raw] [--sample] [--rebuild]
 python -m lecturelens stats
-python -m lecturelens ask "What is minimum edit distance?" [--mode detailed] [--retrieval bm25] [--no-rerank] [--debug]
+python -m lecturelens ask "What is minimum edit distance?" [--mode detailed] [--retrieval bm25] [--rerank] [--debug]
 python -m lecturelens chat                # follow-up questions; /clear, /exit
 python -m lecturelens quiz --topic "finite-state transducers" --n 5 [--difficulty hard] [--show-answers] [--out quiz.json]
 python -m lecturelens summarize --doc "PPT1"           # or --topic "..."

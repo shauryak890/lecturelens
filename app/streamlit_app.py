@@ -369,11 +369,13 @@ def about_tab(services: Services) -> None:
         "1. **Ingest:** PDFs are parsed page by page (OCR for scanned pages), cleaned, and split "
         "into ~400-token chunks that never cross a page, so every chunk has one page number.\n"
         "2. **Retrieve:** each question is searched with BM25 (exact terms) and dense "
-        "embeddings (meaning), fused with Reciprocal Rank Fusion and reranked by a "
-        "cross-encoder.\n"
+        "embeddings (meaning), fused with Reciprocal Rank Fusion. A cross-encoder reranker "
+        "can be switched on in the sidebar (off by default: it lowered accuracy on the "
+        "course PDFs).\n"
         "3. **Answer:** Gemini answers *only* from the numbered excerpts and must cite them as "
         "`[S1]`, `[S2]`... Citations that do not exist are removed; uncited answers get one "
-        "repair attempt; if nothing relevant is found, no LLM call is made at all.\n"
+        "repair attempt. Questions the notes don't cover get \"I couldn't find this in your "
+        'course material" instead of a guess.\n'
         "4. **Follow-ups** are rewritten into standalone questions before searching."
     )
     architecture = Path("docs/architecture.png")

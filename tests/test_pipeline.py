@@ -111,6 +111,7 @@ def test_empty_index_abstains_without_llm_call(
 def test_nothing_relevant_abstains_without_llm_call(
     tiny_index: Indexer, registry: PromptRegistry
 ) -> None:
+    tiny_index.settings = tiny_index.settings.with_overrides({"retrieval.rerank": True})  # opt-in
     pipeline, llm = _pipeline(tiny_index, registry, {}, reranker=FakeReranker(offset=100.0))
     result = pipeline.ask("How does RLHF work?")
     assert llm.calls == [] and result.sources == []

@@ -49,13 +49,13 @@ def test_env_override_string() -> None:
 
 def test_env_override_is_typed_and_nested() -> None:
     env = {
-        "LECTURELENS__RETRIEVAL__RERANK": "false",
+        "LECTURELENS__RETRIEVAL__RERANK": "true",
         "LECTURELENS__RETRIEVAL__FINAL_K": "7",
         "LECTURELENS__RETRIEVAL__BM25__K1": "1.2",
         "LECTURELENS__LLM__CACHE__ENABLED": "no",
     }
     s = load_settings(CONFIG_PATH, environ=env, dotenv_path=None)
-    assert s.retrieval.rerank is False
+    assert s.retrieval.rerank is True  # config default is false
     assert s.retrieval.final_k == 7
     assert s.retrieval.bm25.k1 == 1.2
     assert s.llm.cache.enabled is False

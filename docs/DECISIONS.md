@@ -320,10 +320,18 @@ simpler option was preferred.
   abstention, unsupported claims). The report can be re-rendered from `results.json`
   without new API calls. Chunk sizes within 0.01 MRR at equal Hit@5 count as a tie, and the
   configured size is kept.
-- **Results-driven observations (not yet acted on).** The reranker lowers Hit@1 and MRR on
-  this corpus, and the minimal prompt matched the full prompt (see the README). The default
-  config still follows the spec (hybrid + rerank). Switching `retrieval.rerank` to `false`
-  is a one-line config change, but it means re-running the generation evaluation.
+- **Reranking is off by default** (`retrieval.rerank: false`, changed after the evaluation at
+  the student's request). The SPEC's default was hybrid + rerank. On the course PDFs the
+  ms-marco cross-encoder had these effects:
+  - It lowered Hit@1 from 0.80 to 0.68, Hit@5 from 1.00 to 0.96 and MRR from 0.873 to 0.790.
+  - It added ~1.1 s per query on CPU.
+  - It caused the only generation failure: q25's gold slide fell out of the top 5, so the
+    system wrongly abstained.
+  With it off, the full re-run scored faithfulness 1.00, relevancy 5.00, abstention accuracy
+  100% and zero failures. Trade-off: off-syllabus questions always reach the LLM (no
+  rerank-score threshold), and the LLM declined all 5. Reranking remains available via config,
+  `--rerank` (the CLI flag became `--rerank/--no-rerank`) and the sidebar toggle. Two tests
+  that cover rerank-threshold abstention now opt into reranking explicitly.
 - **Dependencies.** The direct dependencies in requirements*.txt are pinned to the tested
   versions. Transitive ones are not (torch wheels differ per platform). CI installs CPU-only
   PyTorch first so it does not download CUDA wheels.
