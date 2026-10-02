@@ -65,6 +65,12 @@ questions declined, ~1,813 prompt tokens and ~3.1 s per answer.
   next step. LLM-judge scores also vary between runs (q06 scored 0.75 in an earlier run for a
   claim stated on its cited page), so treat them comparatively.
 
+## Screenshots
+
+| Library | Ask | Quiz |
+|---|---|---|
+| ![Library tab: indexed course PDFs](docs/screenshots/library.png) | ![Ask tab](docs/screenshots/ask.png) | ![Quiz tab](docs/screenshots/quiz.png) |
+
 ## How it works
 
 ```mermaid
