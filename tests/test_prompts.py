@@ -19,6 +19,7 @@ EXPECTED_TASKS = {
     "answer",
     "repair_answer",
     "repair_json",
+    "answer_minimal",
     "quiz",
     "summarize",
     "flashcards",

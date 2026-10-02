@@ -104,3 +104,5 @@ eval:
     - {name: hybrid,           retrieval.mode: hybrid, retrieval.rerank: false}
     - {name: hybrid_rerank,    retrieval.mode: hybrid, retrieval.rerank: true}
   chunk_sweep: [200, 400, 600]       # retrieval-only, re-index per value into a temp dir
+  minimal_prompt_questions: 10       # questions for the no-grounding-rules prompt ablation
+  report_examples: 3                 # successes and failures shown in report.md

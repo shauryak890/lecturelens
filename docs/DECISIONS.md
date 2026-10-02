@@ -288,3 +288,47 @@ simpler option was preferred.
 - **App tests** use Streamlit's `AppTest` (headless): an empty library, an answer rendered
   with badge and source cards (stubbed pipeline), a missing API key shown as an error, and
   quiz generate/submit/score. They run offline in a few seconds.
+
+## P4 - Evaluation and polish
+
+- **Relevance is page-level.** A retrieved chunk is relevant when its (file, page) is a gold
+  page. Hit@k, Recall@k, nDCG@k (binary) and MRR count each gold page once, even if two chunks
+  of the same page are retrieved. Metrics are averaged over the 25 answerable questions.
+- **Retrieval ablations make no LLM calls.** The only exception is condensing the two
+  follow-up questions once (cached). Without an API key, a follow-up's query falls back to
+  "previous question + follow-up", and the report says so.
+- **The chunk sweep parses each file once** (`load_pages` + `clean_pages`, including OCR),
+  then re-chunks and re-embeds at each size into a temporary Chroma store. It does not run
+  `ingest` three times. The configured index is never touched.
+- **Minimal-prompt ablation.** A `tutor_minimal` system prompt and an `answer_minimal` task
+  share the answer template through YAML anchors, so only the system prompt differs.
+  `RAGPipeline(answer_task=...)` selects it. It runs on 10 questions
+  (`eval.minimal_prompt_questions`): 5 unanswerable plus the first 5 answerable first-turn
+  questions, to protect the daily quota (SPEC 12.3).
+- **Generation metrics.**
+  - Faithfulness is judged only for questions the system answered (`answerable=true` with
+    sources); abstentions have no claims to verify.
+  - Citation validity is measured *before* repair: `AskResult` now records
+    `removed_citations` and `repaired`.
+  - Abstention precision/recall treat "not answerable" as the positive class.
+- **The judge uses `llm.judge_model`** (gemini-3.1-flash-lite) at temperature 0, so verdicts
+  are cached and reproducible. If its claim and verdict lists differ in length, the overlap
+  is used and a warning is logged.
+- **Report.** `report.md` and `results.json` are stamped with the date, prompt version,
+  models and a full config snapshot. Success and failure examples are selected
+  automatically; the failure text states the observable cause (retrieval miss, wrong
+  abstention, unsupported claims). The report can be re-rendered from `results.json`
+  without new API calls. Chunk sizes within 0.01 MRR at equal Hit@5 count as a tie, and the
+  configured size is kept.
+- **Results-driven observations (not yet acted on).** The reranker lowers Hit@1 and MRR on
+  this corpus, and the minimal prompt matched the full prompt (see the README). The default
+  config still follows the spec (hybrid + rerank). Switching `retrieval.rerank` to `false`
+  is a one-line config change, but it means re-running the generation evaluation.
+- **Dependencies.** The direct dependencies in requirements*.txt are pinned to the tested
+  versions. Transitive ones are not (torch wheels differ per platform). CI installs CPU-only
+  PyTorch first so it does not download CUDA wheels.
+- **README screenshots** are not included yet: the in-app browser pane renders the UI too
+  small for usable images. The student adds three (Ask with source cards, Quiz after
+  submission, Library) under `docs/screenshots/`.
+- **Architecture diagram** is a Mermaid flowchart in the README (rendered by GitHub) instead
+  of `docs/architecture.png`, so it stays editable and versioned as text.

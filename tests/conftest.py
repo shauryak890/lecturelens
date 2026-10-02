@@ -16,6 +16,12 @@ SAMPLE_DIR = ROOT / "data" / "sample"
 
 
 @pytest.fixture(autouse=True)
+def _isolated_logs(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """CLI tests load the real config: keep their log files out of the project's logs/."""
+    monkeypatch.setenv("LECTURELENS__APP__LOG_DIR", str(tmp_path / "logs"))
+
+
+@pytest.fixture(autouse=True)
 def _reset_package_logger():
     """Undo setup_logging() after each test so handlers never point at closed test streams."""
     yield

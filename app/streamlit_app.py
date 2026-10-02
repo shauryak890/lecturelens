@@ -4,7 +4,6 @@ This file only lays out widgets and calls the ``lecturelens`` package; all retri
 and validation logic lives in the package (see ``lecturelens.services.Services``).
 """
 
-import json
 import logging
 from collections.abc import Callable
 from pathlib import Path
@@ -14,6 +13,8 @@ import streamlit as st
 
 from lecturelens.config import Settings, load_settings
 from lecturelens.errors import LectureLensError
+from lecturelens.evaluation.report import headline_table
+from lecturelens.evaluation.runner import EvalReport
 from lecturelens.ingestion.loader import discover_files
 from lecturelens.logging_utils import setup_logging
 from lecturelens.schemas import AskResult, ChatTurn, RetrievedChunk
@@ -381,7 +382,12 @@ def about_tab(services: Services) -> None:
     results = Path(settings.eval.output_dir) / RESULTS_JSON
     st.subheader("Latest evaluation")
     if results.is_file():
-        st.json(json.loads(results.read_text(encoding="utf-8")), expanded=False)
+        report = EvalReport.model_validate_json(results.read_text(encoding="utf-8"))
+        st.caption(
+            f"{report.n_questions} questions · {report.created_at} · prompt file "
+            f"v{report.prompt_version} · full report: eval/results/report.md"
+        )
+        st.markdown("\n".join(headline_table(report)))
     else:
         st.info("No evaluation results yet. Run `python -m lecturelens eval`.")
 

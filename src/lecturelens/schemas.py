@@ -158,6 +158,8 @@ class AskResult(BaseModel):
     sources: list[RetrievedChunk]  # index i corresponds to [S{i+1}]
     timings_ms: dict[str, float]
     usage: dict[str, int]  # prompt_tokens, output_tokens, llm_calls, cache_hits across calls
+    removed_citations: list[int] = []  # invalid [S#] ids stripped from the first answer
+    repaired: bool = False  # whether the one-time citation repair call was made
 
 
 class Usage(BaseModel):

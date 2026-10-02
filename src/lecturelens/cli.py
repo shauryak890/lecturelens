@@ -445,6 +445,48 @@ def flashcards(
         console.print(f"[dim]Saved {len(result.output.cards)} cards to {escape(str(csv_path))}[/]")
 
 
+@app.command("eval")
+def eval_command(
+    ctx: typer.Context,
+    no_generation: Annotated[
+        bool, typer.Option("--no-generation", help="Retrieval metrics only (no LLM calls).")
+    ] = False,
+    ablations: Annotated[
+        bool, typer.Option("--ablations", help="Also evaluate every eval.ablations config.")
+    ] = False,
+    chunk_sweep: Annotated[
+        bool, typer.Option("--chunk-sweep", help="Re-chunk at each eval.chunk_sweep size.")
+    ] = False,
+    limit: Annotated[
+        int | None, typer.Option("--limit", min=1, help="Only the first N questions (smoke test).")
+    ] = None,
+    out_dir: Annotated[
+        Path | None, typer.Option("--out-dir", help=r"\[default: eval.output_dir].")
+    ] = None,
+) -> None:
+    """Evaluate retrieval and answers on eval/qa_dataset.jsonl; write report.md + results.json."""
+    from lecturelens.evaluation.dataset import load_dataset
+    from lecturelens.evaluation.report import headline_table, write_report
+    from lecturelens.evaluation.runner import EvalRunner
+
+    settings: Settings = ctx.obj
+    generation = settings.eval.run_generation_metrics and not no_generation
+    try:
+        items = load_dataset(Path(settings.eval.dataset))[:limit]
+        services = _services(settings)
+        with console.status("Evaluating...") as status:
+            runner = EvalRunner(services, items, on_progress=lambda msg: status.update(msg))
+            report = runner.run(generation=generation, ablations=ablations, chunk_sweep=chunk_sweep)
+    except LectureLensError as exc:
+        raise _fail(exc) from exc
+    target = out_dir or Path(settings.eval.output_dir)
+    md, js = write_report(report, target, settings.eval.report_examples)
+    console.print(Markdown("\n".join(headline_table(report))))
+    for note in report.notes:
+        console.print(f"[yellow]Note:[/] {escape(note)}")
+    console.print(f"Report: {escape(str(md))}\nResults: {escape(str(js))}")
+
+
 @app.command()
 def models(
     ctx: typer.Context,

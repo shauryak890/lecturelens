@@ -199,6 +199,8 @@ class EvalCfg(_Cfg):
     run_generation_metrics: bool
     ablations: list[AblationCfg]
     chunk_sweep: list[int]
+    minimal_prompt_questions: int = Field(ge=0)
+    report_examples: int = Field(ge=0)
 
 
 class Settings(_Cfg):

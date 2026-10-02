@@ -57,12 +57,23 @@ class RAGPipeline:
         retriever: HybridRetriever,
         llm: LLMClient,
         registry: PromptRegistry,
+        answer_task: str = ANSWER_TASK,
     ) -> None:
-        """Create the pipeline from its parts (see :func:`build_pipeline`)."""
+        """Create the pipeline from its parts (see :func:`build_pipeline`).
+
+        Args:
+            settings: Application settings.
+            retriever: Hybrid retriever.
+            llm: LLM client.
+            registry: Prompt registry.
+            answer_task: Prompt-file task that writes the answer. The evaluation passes
+                ``answer_minimal`` for the no-grounding-rules ablation.
+        """
         self.settings = settings
         self.retriever = retriever
         self.llm = llm
         self.registry = registry
+        self.answer_task = answer_task
 
     def ask(
         self,
@@ -112,14 +123,21 @@ class RAGPipeline:
             chunks, self.settings.retrieval.max_context_tokens, self.registry
         )
         with stopwatch(timings, "generate"):
-            response, usage = self._answer(
+            response, usage, check = self._answer(
                 standalone,
                 context,
                 len(sources),
                 mode or self.settings.generation.default_mode,
                 usage,
             )
-        return self._result(question, standalone, response, sources, timings, usage, started)
+        result = self._result(question, standalone, response, sources, timings, usage, started)
+        return result.model_copy(update=check)
+
+    def standalone_question(
+        self, question: str, history: list[ChatTurn] | None
+    ) -> tuple[str, Usage]:
+        """The search query for ``question``: condensed if there is history, else unchanged."""
+        return self._condense(question, history, Usage())
 
     # -------------------------------------------------------------- steps
 
@@ -145,29 +163,39 @@ class RAGPipeline:
 
     def _answer(
         self, question: str, context: str, n_sources: int, mode: AnswerMode, usage: Usage
-    ) -> tuple[AnswerResponse, Usage]:
-        """Generate the answer, validate its citations, and repair once if needed."""
+    ) -> tuple[AnswerResponse, Usage, dict]:
+        """Generate the answer, validate its citations, and repair once if needed.
+
+        Returns:
+            The final answer, the accumulated usage and citation diagnostics
+            (``removed_citations``, ``repaired``) for :class:`AskResult`.
+        """
         gen = self.settings.generation
         instruction = self.registry.mode_instruction(
-            ANSWER_TASK, mode, max_words=gen.max_words, max_words_detailed=gen.max_words_detailed
+            self.answer_task,
+            mode,
+            max_words=gen.max_words,
+            max_words_detailed=gen.max_words_detailed,
         )
         try:
             raw, call_usage = self.llm.run_task(
-                ANSWER_TASK, context=context, question=question, mode_instruction=instruction
+                self.answer_task, context=context, question=question, mode_instruction=instruction
             )
         except LLMBlockedError as exc:
             logger.warning("Answer blocked: %s", exc)
-            return self._fixed("blocked"), usage
+            return self._fixed("blocked"), usage, {}
         usage = usage + call_usage
         assert isinstance(raw, AnswerResponse)
         check = citations.validate(raw, n_sources)
+        diagnostics: dict = {"removed_citations": check.removed}
         if check.removed:
             logger.info("Removed invalid citations %s", check.removed)
         if not check.needs_repair:
-            return check.response, usage
+            return check.response, usage, diagnostics
         if not gen.repair_on_invalid_citations:
-            return check.response.model_copy(update={"confidence": "low"}), usage
-        return self._repair(raw, check, question, context, n_sources, usage)
+            return check.response.model_copy(update={"confidence": "low"}), usage, diagnostics
+        response, usage = self._repair(raw, check, question, context, n_sources, usage)
+        return response, usage, {**diagnostics, "repaired": True}
 
     def _repair(
         self,

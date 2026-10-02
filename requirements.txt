@@ -1,18 +1,18 @@
-# Runtime dependencies. Pin exact versions (package==x.y.z) before submission (SPEC section 10).
-google-genai
-pydantic>=2
-pyyaml
-python-dotenv
-pymupdf4llm
-sentence-transformers
-chromadb
-rank-bm25
-snowballstemmer            # optional BM25 stemming (retrieval.bm25.stemming)
-rapidocr                   # OCR for scanned PDF pages (ingestion.use_ocr), used by pymupdf4llm
-numpy
-tenacity
-streamlit
-typer
-rich
-pandas
+# Runtime dependencies, pinned to the versions this project was built and tested with (SPEC 10).
+google-genai==2.25.0
+pydantic==2.13.5
+pyyaml==6.0.3
+python-dotenv==1.2.3
+pymupdf4llm==1.28.2
+sentence-transformers==6.1.0
+chromadb==1.5.9
+rank-bm25==0.2.2
+snowballstemmer==3.1.1      # optional BM25 stemming (retrieval.bm25.stemming)
+rapidocr==3.9.2             # OCR for scanned PDF pages (ingestion.use_ocr), used by pymupdf4llm
+numpy==2.4.6
+tenacity==9.1.4
+streamlit==1.64.0
+typer==0.27.2
+rich==15.0.0
+pandas==3.0.6
 # openai        # only if you enable the openai_compatible provider

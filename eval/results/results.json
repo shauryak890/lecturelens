@@ -1,0 +1,3503 @@
+{
+  "created_at": "2026-10-02T07:42:11Z",
+  "prompt_version": "1.2.0",
+  "models": {
+    "llm": "gemini-3.8-flash",
+    "judge": "gemini-3.1-flash-lite",
+    "embeddings": "BAAI/bge-small-en-v1.5",
+    "reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2"
+  },
+  "dataset": "eval\\qa_dataset.jsonl",
+  "n_questions": 30,
+  "config": {
+    "app": {
+      "name": "LectureLens",
+      "data_dir": "data\\raw",
+      "sample_dir": "data\\sample",
+      "index_dir": "data\\index",
+      "log_dir": "logs",
+      "log_level": "INFO"
+    },
+    "llm": {
+      "provider": "gemini",
+      "api_key_env": "GEMINI_API_KEY",
+      "base_url": null,
+      "model": "gemini-3.8-flash",
+      "fallback_model": "gemini-3.1-flash-lite",
+      "judge_model": "gemini-3.1-flash-lite",
+      "timeout_s": 60.0,
+      "max_retries": 4,
+      "backoff_base_s": 2.0,
+      "requests_per_minute": 8,
+      "thinking_level": "low",
+      "thinking_token_allowance": 1024,
+      "cache": {
+        "enabled": true,
+        "path": "data\\cache\\llm_cache.sqlite",
+        "max_cacheable_temperature": 0.5
+      }
+    },
+    "prompts": {
+      "path": "prompts\\prompts.yaml"
+    },
+    "embeddings": {
+      "provider": "local",
+      "model": "BAAI/bge-small-en-v1.5",
+      "query_instruction": "Represent this sentence for searching relevant passages: ",
+      "batch_size": 32,
+      "normalize": true,
+      "device": "cpu",
+      "gemini_model": "gemini-embedding-2",
+      "gemini_dim": 768
+    },
+    "ingestion": {
+      "extensions": [
+        ".pdf",
+        ".md",
+        ".txt"
+      ],
+      "chunk_size_tokens": 400,
+      "chunk_overlap_tokens": 60,
+      "min_chunk_tokens": 40,
+      "min_page_chars": 20,
+      "header_footer_threshold": 0.5,
+      "header_footer_min_pages": 3,
+      "header_footer_substring_min_chars": 20,
+      "use_ocr": true,
+      "add_context_header": true
+    },
+    "retrieval": {
+      "mode": "hybrid",
+      "top_k_dense": 20,
+      "top_k_bm25": 20,
+      "rrf_k": 60,
+      "weights": {
+        "dense": 1.0,
+        "bm25": 1.0
+      },
+      "rerank": true,
+      "reranker_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+      "rerank_candidates": 20,
+      "final_k": 5,
+      "min_rerank_score": -5.0,
+      "max_context_tokens": 3000,
+      "bm25": {
+        "k1": 1.5,
+        "b": 0.75,
+        "stemming": false
+      }
+    },
+    "generation": {
+      "default_mode": "concise",
+      "max_words": 180,
+      "max_words_detailed": 450,
+      "history_turns": 3,
+      "repair_on_invalid_citations": true
+    },
+    "quiz": {
+      "default_n": 5,
+      "max_n": 15,
+      "default_difficulty": "mixed",
+      "context_chunks": 8,
+      "seed": 42,
+      "dedup_similarity": 0.8
+    },
+    "summary": {
+      "n_points": 7,
+      "n_terms": 8,
+      "context_chunks": 10
+    },
+    "flashcards": {
+      "default_n": 10,
+      "context_chunks": 8
+    },
+    "eval": {
+      "dataset": "eval\\qa_dataset.jsonl",
+      "output_dir": "eval\\results",
+      "k_values": [
+        1,
+        3,
+        5
+      ],
+      "run_generation_metrics": true,
+      "ablations": [
+        {
+          "name": "bm25_only",
+          "retrieval.mode": "bm25",
+          "retrieval.rerank": false
+        },
+        {
+          "name": "dense_only",
+          "retrieval.mode": "dense",
+          "retrieval.rerank": false
+        },
+        {
+          "name": "hybrid",
+          "retrieval.mode": "hybrid",
+          "retrieval.rerank": false
+        },
+        {
+          "name": "hybrid_rerank",
+          "retrieval.mode": "hybrid",
+          "retrieval.rerank": true
+        }
+      ],
+      "chunk_sweep": [
+        200,
+        400,
+        600
+      ],
+      "minimal_prompt_questions": 10,
+      "report_examples": 3
+    }
+  },
+  "retrieval": [
+    {
+      "name": "default",
+      "overrides": {},
+      "metrics": {
+        "hit@1": 0.68,
+        "recall@1": 0.58,
+        "ndcg@1": 0.68,
+        "hit@3": 0.92,
+        "recall@3": 0.7866666666666667,
+        "ndcg@3": 0.7355178165231848,
+        "hit@5": 0.96,
+        "recall@5": 0.8733333333333333,
+        "ndcg@5": 0.7786535693105401,
+        "mrr": 0.79
+      },
+      "latency_ms_p50": 1149.031000008108,
+      "per_question": [
+        {
+          "id": "q01",
+          "type": "factual",
+          "query": "What are the five components in the formal definition of a finite automaton?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.5"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.5",
+            "PPT-2 morphology and FSM.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.35",
+            "PPT-2 morphology and FSM.pdf p.17",
+            "Introduction to Theory of Computation.pdf p.4"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q02",
+          "type": "factual",
+          "query": "What is a trap state (dead state) in a DFA?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.14"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.14",
+            "Introduction to Theory of Computation.pdf p.19",
+            "Introduction to Theory of Computation.pdf p.21",
+            "Introduction to Theory of Computation.pdf p.20",
+            "Introduction to Theory of Computation.pdf p.5"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q03",
+          "type": "factual",
+          "query": "What is the maximum number of states a DFA can have after converting an NFA with m states?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.31"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.31",
+            "Introduction to Theory of Computation.pdf p.40",
+            "Introduction to Theory of Computation.pdf p.30",
+            "Introduction to Theory of Computation.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.22"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q04",
+          "type": "factual",
+          "query": "Which edit operations are allowed in the minimum edit distance method for spelling correction?",
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.6",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.7",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.10",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q05",
+          "type": "factual",
+          "query": "When correcting 'smple' in the sentence 'This is a smple text.', which correction is chosen and why?",
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.4",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.7",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.3"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q06",
+          "type": "factual",
+          "query": "Which classes of languages are defined by finite-state automata, pushdown automata and Turing machines?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.3",
+            "PPT-2 morphology and FSM.pdf p.16"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.16",
+            "PPT-2 morphology and FSM.pdf p.21",
+            "Introduction to Theory of Computation.pdf p.4",
+            "Introduction to Theory of Computation.pdf p.3",
+            "Introduction to Theory of Computation.pdf p.5"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q07",
+          "type": "factual",
+          "query": "By how much can tokenization length differ between languages for equivalent text?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.71"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.71",
+            "PPT -3 tokenization-multilinguality.pdf p.17",
+            "PPT -3 tokenization-multilinguality.pdf p.16",
+            "PPT -3 tokenization-multilinguality.pdf p.8",
+            "01_tokenization.md p.1"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q08",
+          "type": "conceptual",
+          "query": "How is the dynamic programming table for minimum edit distance initialised, filled and read?",
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.8",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.11"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.10",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.8",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.14"
+          ],
+          "first_gold_rank": 2
+        },
+        {
+          "id": "q09",
+          "type": "conceptual",
+          "query": "Describe the training algorithm of Byte Pair Encoding.",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.25"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.25",
+            "PPT -3 tokenization-multilinguality.pdf p.54",
+            "PPT -3 tokenization-multilinguality.pdf p.24",
+            "PPT -3 tokenization-multilinguality.pdf p.3",
+            "PPT -3 tokenization-multilinguality.pdf p.26"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q10",
+          "type": "conceptual",
+          "query": "What problem does subword tokenization solve compared with word and character tokenization?",
+          "gold": [
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.22"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.22",
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.57",
+            "PPT -3 tokenization-multilinguality.pdf p.23",
+            "PPT -3 tokenization-multilinguality.pdf p.75"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q11",
+          "type": "conceptual",
+          "query": "Why does morphological analysis need a nondeterministic finite-state transducer?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.39"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.15",
+            "PPT1 morphology and FSM.pdf p.29",
+            "PPT-2 morphology and FSM.pdf p.39",
+            "PPT-2 morphology and FSM.pdf p.26",
+            "PPT-2 morphology and FSM.pdf p.31"
+          ],
+          "first_gold_rank": 3
+        },
+        {
+          "id": "q12",
+          "type": "conceptual",
+          "query": "What is the curse of multilinguality?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.69"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.69",
+            "PPT -3 tokenization-multilinguality.pdf p.70",
+            "PPT -3 tokenization-multilinguality.pdf p.7",
+            "PPT -3 tokenization-multilinguality.pdf p.62",
+            "PPT -3 tokenization-multilinguality.pdf p.67"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q13",
+          "type": "conceptual",
+          "query": "What is the e-insertion spelling rule and how can it be implemented?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.35",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT1 morphology and FSM.pdf p.17"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.34",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT1 morphology and FSM.pdf p.15",
+            "PPT1 morphology and FSM.pdf p.14",
+            "PPT1 morphology and FSM.pdf p.17"
+          ],
+          "first_gold_rank": 2
+        },
+        {
+          "id": "q14",
+          "type": "conceptual",
+          "query": "How is the start state of the DFA determined when converting an NFA to a DFA?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.18"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.31",
+            "Introduction to Theory of Computation.pdf p.28",
+            "Introduction to Theory of Computation.pdf p.30",
+            "Introduction to Theory of Computation.pdf p.21"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q15",
+          "type": "comparison",
+          "query": "Compare a DFA with an NFA.",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.7"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.6",
+            "Introduction to Theory of Computation.pdf p.31",
+            "Introduction to Theory of Computation.pdf p.7",
+            "Introduction to Theory of Computation.pdf p.29",
+            "Introduction to Theory of Computation.pdf p.18"
+          ],
+          "first_gold_rank": 3
+        },
+        {
+          "id": "q16",
+          "type": "comparison",
+          "query": "What is the difference between inflectional and derivational morphology?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.6"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.8",
+            "PPT1 morphology and FSM.pdf p.9",
+            "PPT-2 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.12"
+          ],
+          "first_gold_rank": 3
+        },
+        {
+          "id": "q17",
+          "type": "comparison",
+          "query": "How do isolating, agglutinative and inflected languages differ in word structure?",
+          "gold": [
+            "PPT1 morphology and FSM.pdf p.7"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.7",
+            "PPT1 morphology and FSM.pdf p.8",
+            "PPT-2 morphology and FSM.pdf p.3",
+            "PPT-2 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.29"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q18",
+          "type": "comparison",
+          "query": "What are the pros and cons of word tokenization versus character or byte tokenization?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.19",
+            "PPT -3 tokenization-multilinguality.pdf p.21"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.21",
+            "PPT -3 tokenization-multilinguality.pdf p.75",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2",
+            "PPT -3 tokenization-multilinguality.pdf p.18",
+            "PPT -3 tokenization-multilinguality.pdf p.3"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q19",
+          "type": "keyword",
+          "query": "What is SolidGoldMagikarp and why did it cause problems?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.61"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.60",
+            "PPT -3 tokenization-multilinguality.pdf p.60",
+            "PPT -3 tokenization-multilinguality.pdf p.57",
+            "PPT -3 tokenization-multilinguality.pdf p.61",
+            "01_tokenization.md p.1"
+          ],
+          "first_gold_rank": 4
+        },
+        {
+          "id": "q20",
+          "type": "keyword",
+          "query": "What is SentencePiece and which models use it?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.56"
+          ],
+          "retrieved": [
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.56",
+            "01_tokenization.md p.1",
+            "02_ngram_language_models.md p.1",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2"
+          ],
+          "first_gold_rank": 2
+        },
+        {
+          "id": "q21",
+          "type": "keyword",
+          "query": "What do the caret ^ and dollar $ symbols mean in a regular expression?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.34"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.34",
+            "PPT-2 morphology and FSM.pdf p.25",
+            "Introduction to Theory of Computation.pdf p.32",
+            "Introduction to Theory of Computation.pdf p.33",
+            "Introduction to Theory of Computation.pdf p.35"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q22",
+          "type": "followup",
+          "query": "What is Byte Pair Encoding and why is it so widely used?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.23",
+            "PPT -3 tokenization-multilinguality.pdf p.24"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.24",
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.26",
+            "PPT -3 tokenization-multilinguality.pdf p.31",
+            "PPT -3 tokenization-multilinguality.pdf p.36"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q23",
+          "type": "followup",
+          "query": "How is new text tokenized with Byte Pair Encoding (BPE) at test time?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.54"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.54",
+            "PPT -3 tokenization-multilinguality.pdf p.25",
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.40",
+            "PPT -3 tokenization-multilinguality.pdf p.32"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q24",
+          "type": "followup",
+          "query": "What is a finite-state transducer?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT-2 morphology and FSM.pdf p.32"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT-2 morphology and FSM.pdf p.32",
+            "PPT1 morphology and FSM.pdf p.18",
+            "PPT-2 morphology and FSM.pdf p.26",
+            "PPT1 morphology and FSM.pdf p.13"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q25",
+          "type": "followup",
+          "query": "And what does inverting a finite-state transducer do?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.33"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT-2 morphology and FSM.pdf p.32",
+            "PPT1 morphology and FSM.pdf p.18",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT-2 morphology and FSM.pdf p.21"
+          ],
+          "first_gold_rank": null
+        }
+      ]
+    },
+    {
+      "name": "bm25_only",
+      "overrides": {
+        "retrieval.mode": "bm25",
+        "retrieval.rerank": false
+      },
+      "metrics": {
+        "hit@1": 0.72,
+        "recall@1": 0.6333333333333333,
+        "ndcg@1": 0.72,
+        "hit@3": 0.88,
+        "recall@3": 0.76,
+        "ndcg@3": 0.7375422980818206,
+        "hit@5": 1.0,
+        "recall@5": 0.8733333333333334,
+        "ndcg@5": 0.7880678692985359,
+        "mrr": 0.8146666666666667
+      },
+      "latency_ms_p50": 1.2172000133432448,
+      "per_question": [
+        {
+          "id": "q01",
+          "type": "factual",
+          "query": "What are the five components in the formal definition of a finite automaton?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.5"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.5",
+            "PPT-2 morphology and FSM.pdf p.13",
+            "PPT-2 morphology and FSM.pdf p.17",
+            "Introduction to Theory of Computation.pdf p.9",
+            "Introduction to Theory of Computation.pdf p.35"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q02",
+          "type": "factual",
+          "query": "What is a trap state (dead state) in a DFA?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.14"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.14",
+            "Introduction to Theory of Computation.pdf p.19",
+            "Introduction to Theory of Computation.pdf p.7",
+            "Introduction to Theory of Computation.pdf p.28",
+            "Introduction to Theory of Computation.pdf p.18"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q03",
+          "type": "factual",
+          "query": "What is the maximum number of states a DFA can have after converting an NFA with m states?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.31"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.31",
+            "Introduction to Theory of Computation.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.19",
+            "Introduction to Theory of Computation.pdf p.40"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q04",
+          "type": "factual",
+          "query": "Which edit operations are allowed in the minimum edit distance method for spelling correction?",
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.6",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.7",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.10"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q05",
+          "type": "factual",
+          "query": "When correcting 'smple' in the sentence 'This is a smple text.', which correction is chosen and why?",
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.4",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.3",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.6"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q06",
+          "type": "factual",
+          "query": "Which classes of languages are defined by finite-state automata, pushdown automata and Turing machines?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.3",
+            "PPT-2 morphology and FSM.pdf p.16"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.16",
+            "Introduction to Theory of Computation.pdf p.3",
+            "Introduction to Theory of Computation.pdf p.5",
+            "Introduction to Theory of Computation.pdf p.4",
+            "Introduction to Theory of Computation.pdf p.9"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q07",
+          "type": "factual",
+          "query": "By how much can tokenization length differ between languages for equivalent text?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.71"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.71",
+            "PPT-2 morphology and FSM.pdf p.21",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2",
+            "PPT -3 tokenization-multilinguality.pdf p.73",
+            "Introduction to Theory of Computation.pdf p.1"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q08",
+          "type": "conceptual",
+          "query": "How is the dynamic programming table for minimum edit distance initialised, filled and read?",
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.8",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.11"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.8",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.10",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.7",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q09",
+          "type": "conceptual",
+          "query": "Describe the training algorithm of Byte Pair Encoding.",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.25"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.25",
+            "PPT -3 tokenization-multilinguality.pdf p.26",
+            "PPT -3 tokenization-multilinguality.pdf p.3",
+            "PPT -3 tokenization-multilinguality.pdf p.54",
+            "PPT -3 tokenization-multilinguality.pdf p.24"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q10",
+          "type": "conceptual",
+          "query": "What problem does subword tokenization solve compared with word and character tokenization?",
+          "gold": [
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.22"
+          ],
+          "retrieved": [
+            "03_word_embeddings.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.22",
+            "PPT -3 tokenization-multilinguality.pdf p.3",
+            "PPT -3 tokenization-multilinguality.pdf p.75",
+            "PPT -3 tokenization-multilinguality.pdf p.59"
+          ],
+          "first_gold_rank": 2
+        },
+        {
+          "id": "q11",
+          "type": "conceptual",
+          "query": "Why does morphological analysis need a nondeterministic finite-state transducer?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.39"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.39",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT1 morphology and FSM.pdf p.29",
+            "PPT1 morphology and FSM.pdf p.18",
+            "PPT1 morphology and FSM.pdf p.2"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q12",
+          "type": "conceptual",
+          "query": "What is the curse of multilinguality?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.69"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.69",
+            "PPT -3 tokenization-multilinguality.pdf p.70",
+            "PPT -3 tokenization-multilinguality.pdf p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.65",
+            "PPT -3 tokenization-multilinguality.pdf p.3"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q13",
+          "type": "conceptual",
+          "query": "What is the e-insertion spelling rule and how can it be implemented?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.35",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT1 morphology and FSM.pdf p.17"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT-2 morphology and FSM.pdf p.34",
+            "PPT1 morphology and FSM.pdf p.17",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2",
+            "PPT-2 morphology and FSM.pdf p.35"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q14",
+          "type": "conceptual",
+          "query": "How is the start state of the DFA determined when converting an NFA to a DFA?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.18"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.7",
+            "Introduction to Theory of Computation.pdf p.19",
+            "Introduction to Theory of Computation.pdf p.23",
+            "Introduction to Theory of Computation.pdf p.21"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q15",
+          "type": "comparison",
+          "query": "Compare a DFA with an NFA.",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.7"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.31",
+            "Introduction to Theory of Computation.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.7",
+            "Introduction to Theory of Computation.pdf p.29",
+            "Introduction to Theory of Computation.pdf p.19"
+          ],
+          "first_gold_rank": 3
+        },
+        {
+          "id": "q16",
+          "type": "comparison",
+          "query": "What is the difference between inflectional and derivational morphology?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.6"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.8",
+            "PPT1 morphology and FSM.pdf p.9",
+            "PPT1 morphology and FSM.pdf p.5",
+            "PPT-2 morphology and FSM.pdf p.22",
+            "PPT1 morphology and FSM.pdf p.29"
+          ],
+          "first_gold_rank": 3
+        },
+        {
+          "id": "q17",
+          "type": "comparison",
+          "query": "How do isolating, agglutinative and inflected languages differ in word structure?",
+          "gold": [
+            "PPT1 morphology and FSM.pdf p.7"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.7",
+            "PPT-2 morphology and FSM.pdf p.3",
+            "PPT1 morphology and FSM.pdf p.8",
+            "PPT1 morphology and FSM.pdf p.3",
+            "PPT-2 morphology and FSM.pdf p.40"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q18",
+          "type": "comparison",
+          "query": "What are the pros and cons of word tokenization versus character or byte tokenization?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.19",
+            "PPT -3 tokenization-multilinguality.pdf p.21"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.21",
+            "PPT -3 tokenization-multilinguality.pdf p.75",
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.18",
+            "PPT -3 tokenization-multilinguality.pdf p.3"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q19",
+          "type": "keyword",
+          "query": "What is SolidGoldMagikarp and why did it cause problems?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.61"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.60",
+            "PPT -3 tokenization-multilinguality.pdf p.57",
+            "PPT -3 tokenization-multilinguality.pdf p.60",
+            "PPT-2 morphology and FSM.pdf p.6",
+            "PPT -3 tokenization-multilinguality.pdf p.61"
+          ],
+          "first_gold_rank": 5
+        },
+        {
+          "id": "q20",
+          "type": "keyword",
+          "query": "What is SentencePiece and which models use it?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.56"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.56",
+            "01_tokenization.md p.1",
+            "02_ngram_language_models.md p.1",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2",
+            "01_tokenization.md p.1"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q21",
+          "type": "keyword",
+          "query": "What do the caret ^ and dollar $ symbols mean in a regular expression?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.34"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.34",
+            "Introduction to Theory of Computation.pdf p.33",
+            "Introduction to Theory of Computation.pdf p.35",
+            "Introduction to Theory of Computation.pdf p.2",
+            "Introduction to Theory of Computation.pdf p.32"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q22",
+          "type": "followup",
+          "query": "What is Byte Pair Encoding and why is it so widely used?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.23",
+            "PPT -3 tokenization-multilinguality.pdf p.24"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.26",
+            "PPT -3 tokenization-multilinguality.pdf p.27",
+            "PPT -3 tokenization-multilinguality.pdf p.28",
+            "PPT -3 tokenization-multilinguality.pdf p.24",
+            "01_tokenization.md p.1"
+          ],
+          "first_gold_rank": 4
+        },
+        {
+          "id": "q23",
+          "type": "followup",
+          "query": "How is new text tokenized with Byte Pair Encoding (BPE) at test time?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.54"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.54",
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.25",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2",
+            "PPT -3 tokenization-multilinguality.pdf p.26"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q24",
+          "type": "followup",
+          "query": "What is a finite-state transducer?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT-2 morphology and FSM.pdf p.32"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.18",
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT-2 morphology and FSM.pdf p.33",
+            "PPT-2 morphology and FSM.pdf p.17"
+          ],
+          "first_gold_rank": 2
+        },
+        {
+          "id": "q25",
+          "type": "followup",
+          "query": "And what does inverting a finite-state transducer do?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.33"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.18",
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT-2 morphology and FSM.pdf p.33",
+            "PPT-2 morphology and FSM.pdf p.17"
+          ],
+          "first_gold_rank": 4
+        }
+      ]
+    },
+    {
+      "name": "dense_only",
+      "overrides": {
+        "retrieval.mode": "dense",
+        "retrieval.rerank": false
+      },
+      "metrics": {
+        "hit@1": 0.68,
+        "recall@1": 0.58,
+        "ndcg@1": 0.68,
+        "hit@3": 0.92,
+        "recall@3": 0.78,
+        "ndcg@3": 0.7307018339471512,
+        "hit@5": 0.96,
+        "recall@5": 0.86,
+        "ndcg@5": 0.769054346075894,
+        "mrr": 0.7966666666666667
+      },
+      "latency_ms_p50": 19.006499991519377,
+      "per_question": [
+        {
+          "id": "q01",
+          "type": "factual",
+          "query": "What are the five components in the formal definition of a finite automaton?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.5"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.5",
+            "PPT-2 morphology and FSM.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.4",
+            "PPT-2 morphology and FSM.pdf p.17",
+            "PPT-2 morphology and FSM.pdf p.30"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q02",
+          "type": "factual",
+          "query": "What is a trap state (dead state) in a DFA?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.14"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.14",
+            "Introduction to Theory of Computation.pdf p.19",
+            "Introduction to Theory of Computation.pdf p.7",
+            "Introduction to Theory of Computation.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.6"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q03",
+          "type": "factual",
+          "query": "What is the maximum number of states a DFA can have after converting an NFA with m states?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.31"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.31",
+            "Introduction to Theory of Computation.pdf p.30",
+            "Introduction to Theory of Computation.pdf p.22",
+            "Introduction to Theory of Computation.pdf p.40",
+            "Introduction to Theory of Computation.pdf p.18"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q04",
+          "type": "factual",
+          "query": "Which edit operations are allowed in the minimum edit distance method for spelling correction?",
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.6",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.7",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.8"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q05",
+          "type": "factual",
+          "query": "When correcting 'smple' in the sentence 'This is a smple text.', which correction is chosen and why?",
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.6",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.7",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.4"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q06",
+          "type": "factual",
+          "query": "Which classes of languages are defined by finite-state automata, pushdown automata and Turing machines?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.3",
+            "PPT-2 morphology and FSM.pdf p.16"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.16",
+            "Introduction to Theory of Computation.pdf p.4",
+            "Introduction to Theory of Computation.pdf p.3",
+            "Introduction to Theory of Computation.pdf p.5",
+            "PPT-2 morphology and FSM.pdf p.14"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q07",
+          "type": "factual",
+          "query": "By how much can tokenization length differ between languages for equivalent text?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.71"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.71",
+            "PPT -3 tokenization-multilinguality.pdf p.17",
+            "PPT -3 tokenization-multilinguality.pdf p.16",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2",
+            "PPT -3 tokenization-multilinguality.pdf p.73"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q08",
+          "type": "conceptual",
+          "query": "How is the dynamic programming table for minimum edit distance initialised, filled and read?",
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.8",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.11"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.8",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.10",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.11",
+            "Introduction to Theory of Computation.pdf p.13"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q09",
+          "type": "conceptual",
+          "query": "Describe the training algorithm of Byte Pair Encoding.",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.25"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.25",
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.24",
+            "PPT -3 tokenization-multilinguality.pdf p.54",
+            "PPT -3 tokenization-multilinguality.pdf p.23"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q10",
+          "type": "conceptual",
+          "query": "What problem does subword tokenization solve compared with word and character tokenization?",
+          "gold": [
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.22"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2",
+            "PPT -3 tokenization-multilinguality.pdf p.57",
+            "PPT -3 tokenization-multilinguality.pdf p.22",
+            "PPT -3 tokenization-multilinguality.pdf p.71",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2"
+          ],
+          "first_gold_rank": 3
+        },
+        {
+          "id": "q11",
+          "type": "conceptual",
+          "query": "Why does morphological analysis need a nondeterministic finite-state transducer?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.39"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.26",
+            "PPT1 morphology and FSM.pdf p.18",
+            "PPT1 morphology and FSM.pdf p.20",
+            "PPT1 morphology and FSM.pdf p.21",
+            "PPT1 morphology and FSM.pdf p.22"
+          ],
+          "first_gold_rank": null
+        },
+        {
+          "id": "q12",
+          "type": "conceptual",
+          "query": "What is the curse of multilinguality?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.69"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.69",
+            "PPT -3 tokenization-multilinguality.pdf p.70",
+            "PPT -3 tokenization-multilinguality.pdf p.71",
+            "PPT -3 tokenization-multilinguality.pdf p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.64"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q13",
+          "type": "conceptual",
+          "query": "What is the e-insertion spelling rule and how can it be implemented?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.35",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT1 morphology and FSM.pdf p.17"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.34",
+            "PPT1 morphology and FSM.pdf p.13",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.6",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5"
+          ],
+          "first_gold_rank": 2
+        },
+        {
+          "id": "q14",
+          "type": "conceptual",
+          "query": "How is the start state of the DFA determined when converting an NFA to a DFA?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.18"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.30",
+            "Introduction to Theory of Computation.pdf p.28",
+            "Introduction to Theory of Computation.pdf p.23",
+            "Introduction to Theory of Computation.pdf p.7"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q15",
+          "type": "comparison",
+          "query": "Compare a DFA with an NFA.",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.7"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.24",
+            "Introduction to Theory of Computation.pdf p.26",
+            "Introduction to Theory of Computation.pdf p.27",
+            "Introduction to Theory of Computation.pdf p.7",
+            "Introduction to Theory of Computation.pdf p.23"
+          ],
+          "first_gold_rank": 4
+        },
+        {
+          "id": "q16",
+          "type": "comparison",
+          "query": "What is the difference between inflectional and derivational morphology?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.6"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.9",
+            "PPT1 morphology and FSM.pdf p.6",
+            "PPT1 morphology and FSM.pdf p.5",
+            "PPT-2 morphology and FSM.pdf p.8",
+            "PPT1 morphology and FSM.pdf p.8"
+          ],
+          "first_gold_rank": 2
+        },
+        {
+          "id": "q17",
+          "type": "comparison",
+          "query": "How do isolating, agglutinative and inflected languages differ in word structure?",
+          "gold": [
+            "PPT1 morphology and FSM.pdf p.7"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.7",
+            "PPT-2 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.10",
+            "PPT1 morphology and FSM.pdf p.11",
+            "PPT1 morphology and FSM.pdf p.29"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q18",
+          "type": "comparison",
+          "query": "What are the pros and cons of word tokenization versus character or byte tokenization?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.19",
+            "PPT -3 tokenization-multilinguality.pdf p.21"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.21",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2",
+            "PPT -3 tokenization-multilinguality.pdf p.75",
+            "PPT -3 tokenization-multilinguality.pdf p.18",
+            "01_tokenization.md p.1"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q19",
+          "type": "keyword",
+          "query": "What is SolidGoldMagikarp and why did it cause problems?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.61"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.60",
+            "PPT -3 tokenization-multilinguality.pdf p.60",
+            "PPT -3 tokenization-multilinguality.pdf p.61",
+            "PPT -3 tokenization-multilinguality.pdf p.57",
+            "PPT -3 tokenization-multilinguality.pdf p.70"
+          ],
+          "first_gold_rank": 3
+        },
+        {
+          "id": "q20",
+          "type": "keyword",
+          "query": "What is SentencePiece and which models use it?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.56"
+          ],
+          "retrieved": [
+            "02_ngram_language_models.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.56",
+            "PPT1 morphology and FSM.pdf p.27",
+            "02_ngram_language_models.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.9"
+          ],
+          "first_gold_rank": 2
+        },
+        {
+          "id": "q21",
+          "type": "keyword",
+          "query": "What do the caret ^ and dollar $ symbols mean in a regular expression?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.34"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.34",
+            "Introduction to Theory of Computation.pdf p.32",
+            "Introduction to Theory of Computation.pdf p.33",
+            "PPT-2 morphology and FSM.pdf p.25",
+            "Introduction to Theory of Computation.pdf p.33"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q22",
+          "type": "followup",
+          "query": "What is Byte Pair Encoding and why is it so widely used?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.23",
+            "PPT -3 tokenization-multilinguality.pdf p.24"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.24",
+            "PPT -3 tokenization-multilinguality.pdf p.31",
+            "PPT -3 tokenization-multilinguality.pdf p.54",
+            "PPT -3 tokenization-multilinguality.pdf p.35",
+            "PPT -3 tokenization-multilinguality.pdf p.39"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q23",
+          "type": "followup",
+          "query": "How is new text tokenized with Byte Pair Encoding (BPE) at test time?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.54"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.54",
+            "PPT -3 tokenization-multilinguality.pdf p.24",
+            "PPT -3 tokenization-multilinguality.pdf p.25",
+            "PPT -3 tokenization-multilinguality.pdf p.26",
+            "PPT -3 tokenization-multilinguality.pdf p.40"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q24",
+          "type": "followup",
+          "query": "What is a finite-state transducer?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT-2 morphology and FSM.pdf p.32"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT1 morphology and FSM.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.4",
+            "PPT-2 morphology and FSM.pdf p.32",
+            "Introduction to Theory of Computation.pdf p.5"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q25",
+          "type": "followup",
+          "query": "And what does inverting a finite-state transducer do?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.33"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT-2 morphology and FSM.pdf p.33",
+            "Introduction to Theory of Computation.pdf p.4",
+            "PPT-2 morphology and FSM.pdf p.21",
+            "PPT-2 morphology and FSM.pdf p.30"
+          ],
+          "first_gold_rank": 2
+        }
+      ]
+    },
+    {
+      "name": "hybrid",
+      "overrides": {
+        "retrieval.mode": "hybrid",
+        "retrieval.rerank": false
+      },
+      "metrics": {
+        "hit@1": 0.8,
+        "recall@1": 0.68,
+        "ndcg@1": 0.8,
+        "hit@3": 0.92,
+        "recall@3": 0.7666666666666667,
+        "ndcg@3": 0.7690954796550398,
+        "hit@5": 1.0,
+        "recall@5": 0.8733333333333333,
+        "ndcg@5": 0.8188955698624273,
+        "mrr": 0.8733333333333334
+      },
+      "latency_ms_p50": 20.56639999500476,
+      "per_question": [
+        {
+          "id": "q01",
+          "type": "factual",
+          "query": "What are the five components in the formal definition of a finite automaton?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.5"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.5",
+            "PPT-2 morphology and FSM.pdf p.17",
+            "PPT-2 morphology and FSM.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.35",
+            "Introduction to Theory of Computation.pdf p.9"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q02",
+          "type": "factual",
+          "query": "What is a trap state (dead state) in a DFA?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.14"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.14",
+            "Introduction to Theory of Computation.pdf p.19",
+            "Introduction to Theory of Computation.pdf p.7",
+            "Introduction to Theory of Computation.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.5"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q03",
+          "type": "factual",
+          "query": "What is the maximum number of states a DFA can have after converting an NFA with m states?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.31"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.31",
+            "Introduction to Theory of Computation.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.30",
+            "Introduction to Theory of Computation.pdf p.40",
+            "Introduction to Theory of Computation.pdf p.22"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q04",
+          "type": "factual",
+          "query": "Which edit operations are allowed in the minimum edit distance method for spelling correction?",
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.6",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.7",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.8"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q05",
+          "type": "factual",
+          "query": "When correcting 'smple' in the sentence 'This is a smple text.', which correction is chosen and why?",
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.4",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.6",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.7"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q06",
+          "type": "factual",
+          "query": "Which classes of languages are defined by finite-state automata, pushdown automata and Turing machines?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.3",
+            "PPT-2 morphology and FSM.pdf p.16"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.16",
+            "Introduction to Theory of Computation.pdf p.3",
+            "Introduction to Theory of Computation.pdf p.4",
+            "Introduction to Theory of Computation.pdf p.5",
+            "Introduction to Theory of Computation.pdf p.8"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q07",
+          "type": "factual",
+          "query": "By how much can tokenization length differ between languages for equivalent text?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.71"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.71",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2",
+            "PPT -3 tokenization-multilinguality.pdf p.73",
+            "PPT -3 tokenization-multilinguality.pdf p.57",
+            "01_tokenization.md p.1"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q08",
+          "type": "conceptual",
+          "query": "How is the dynamic programming table for minimum edit distance initialised, filled and read?",
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.8",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.11"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.8",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.10",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.7",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.14"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q09",
+          "type": "conceptual",
+          "query": "Describe the training algorithm of Byte Pair Encoding.",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.25"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.25",
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.24",
+            "PPT -3 tokenization-multilinguality.pdf p.54",
+            "PPT -3 tokenization-multilinguality.pdf p.26"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q10",
+          "type": "conceptual",
+          "query": "What problem does subword tokenization solve compared with word and character tokenization?",
+          "gold": [
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.22"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.22",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2",
+            "PPT -3 tokenization-multilinguality.pdf p.71",
+            "PPT -3 tokenization-multilinguality.pdf p.75",
+            "PPT -3 tokenization-multilinguality.pdf p.3"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q11",
+          "type": "conceptual",
+          "query": "Why does morphological analysis need a nondeterministic finite-state transducer?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.39"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.18",
+            "PPT1 morphology and FSM.pdf p.2",
+            "PPT1 morphology and FSM.pdf p.29",
+            "PPT-2 morphology and FSM.pdf p.39",
+            "PPT-2 morphology and FSM.pdf p.31"
+          ],
+          "first_gold_rank": 4
+        },
+        {
+          "id": "q12",
+          "type": "conceptual",
+          "query": "What is the curse of multilinguality?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.69"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.69",
+            "PPT -3 tokenization-multilinguality.pdf p.70",
+            "PPT -3 tokenization-multilinguality.pdf p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.65",
+            "PPT -3 tokenization-multilinguality.pdf p.3"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q13",
+          "type": "conceptual",
+          "query": "What is the e-insertion spelling rule and how can it be implemented?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.35",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT1 morphology and FSM.pdf p.17"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.34",
+            "PPT1 morphology and FSM.pdf p.13",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2",
+            "PPT-2 morphology and FSM.pdf p.38",
+            "PPT1 morphology and FSM.pdf p.17"
+          ],
+          "first_gold_rank": 2
+        },
+        {
+          "id": "q14",
+          "type": "conceptual",
+          "query": "How is the start state of the DFA determined when converting an NFA to a DFA?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.18"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.7",
+            "Introduction to Theory of Computation.pdf p.23",
+            "Introduction to Theory of Computation.pdf p.28",
+            "Introduction to Theory of Computation.pdf p.30"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q15",
+          "type": "comparison",
+          "query": "Compare a DFA with an NFA.",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.7"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.7",
+            "Introduction to Theory of Computation.pdf p.31",
+            "Introduction to Theory of Computation.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.26",
+            "Introduction to Theory of Computation.pdf p.27"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q16",
+          "type": "comparison",
+          "query": "What is the difference between inflectional and derivational morphology?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.6"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.9",
+            "PPT1 morphology and FSM.pdf p.8",
+            "PPT1 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.6",
+            "PPT-2 morphology and FSM.pdf p.8"
+          ],
+          "first_gold_rank": 3
+        },
+        {
+          "id": "q17",
+          "type": "comparison",
+          "query": "How do isolating, agglutinative and inflected languages differ in word structure?",
+          "gold": [
+            "PPT1 morphology and FSM.pdf p.7"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.7",
+            "PPT1 morphology and FSM.pdf p.3",
+            "PPT1 morphology and FSM.pdf p.10",
+            "PPT1 morphology and FSM.pdf p.11",
+            "PPT -3 tokenization-multilinguality.pdf p.71"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q18",
+          "type": "comparison",
+          "query": "What are the pros and cons of word tokenization versus character or byte tokenization?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.19",
+            "PPT -3 tokenization-multilinguality.pdf p.21"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.21",
+            "PPT -3 tokenization-multilinguality.pdf p.75",
+            "PPT -3 tokenization-multilinguality.pdf p.18",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2",
+            "PPT -3 tokenization-multilinguality.pdf p.72"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q19",
+          "type": "keyword",
+          "query": "What is SolidGoldMagikarp and why did it cause problems?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.61"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.60",
+            "PPT -3 tokenization-multilinguality.pdf p.60",
+            "PPT -3 tokenization-multilinguality.pdf p.57",
+            "PPT -3 tokenization-multilinguality.pdf p.61",
+            "PPT-2 morphology and FSM.pdf p.6"
+          ],
+          "first_gold_rank": 4
+        },
+        {
+          "id": "q20",
+          "type": "keyword",
+          "query": "What is SentencePiece and which models use it?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.56"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.56",
+            "02_ngram_language_models.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.9",
+            "01_tokenization.md p.1",
+            "01_tokenization.md p.1"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q21",
+          "type": "keyword",
+          "query": "What do the caret ^ and dollar $ symbols mean in a regular expression?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.34"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.34",
+            "Introduction to Theory of Computation.pdf p.33",
+            "Introduction to Theory of Computation.pdf p.32",
+            "Introduction to Theory of Computation.pdf p.33",
+            "Introduction to Theory of Computation.pdf p.22"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q22",
+          "type": "followup",
+          "query": "What is Byte Pair Encoding and why is it so widely used?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.23",
+            "PPT -3 tokenization-multilinguality.pdf p.24"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.24",
+            "PPT -3 tokenization-multilinguality.pdf p.31",
+            "PPT -3 tokenization-multilinguality.pdf p.35",
+            "PPT -3 tokenization-multilinguality.pdf p.25",
+            "PPT -3 tokenization-multilinguality.pdf p.54"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q23",
+          "type": "followup",
+          "query": "How is new text tokenized with Byte Pair Encoding (BPE) at test time?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.54"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.54",
+            "PPT -3 tokenization-multilinguality.pdf p.25",
+            "PPT -3 tokenization-multilinguality.pdf p.26",
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.24"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q24",
+          "type": "followup",
+          "query": "What is a finite-state transducer?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT-2 morphology and FSM.pdf p.32"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT1 morphology and FSM.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.5",
+            "Introduction to Theory of Computation.pdf p.4",
+            "PPT1 morphology and FSM.pdf p.15"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q25",
+          "type": "followup",
+          "query": "And what does inverting a finite-state transducer do?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.33"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT-2 morphology and FSM.pdf p.33",
+            "PPT1 morphology and FSM.pdf p.18",
+            "PPT-2 morphology and FSM.pdf p.30",
+            "Introduction to Theory of Computation.pdf p.4"
+          ],
+          "first_gold_rank": 2
+        }
+      ]
+    },
+    {
+      "name": "hybrid_rerank",
+      "overrides": {
+        "retrieval.mode": "hybrid",
+        "retrieval.rerank": true
+      },
+      "metrics": {
+        "hit@1": 0.68,
+        "recall@1": 0.58,
+        "ndcg@1": 0.68,
+        "hit@3": 0.92,
+        "recall@3": 0.7866666666666667,
+        "ndcg@3": 0.7355178165231848,
+        "hit@5": 0.96,
+        "recall@5": 0.8733333333333333,
+        "ndcg@5": 0.7786535693105401,
+        "mrr": 0.79
+      },
+      "latency_ms_p50": 1145.6980000075419,
+      "per_question": [
+        {
+          "id": "q01",
+          "type": "factual",
+          "query": "What are the five components in the formal definition of a finite automaton?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.5"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.5",
+            "PPT-2 morphology and FSM.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.35",
+            "PPT-2 morphology and FSM.pdf p.17",
+            "Introduction to Theory of Computation.pdf p.4"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q02",
+          "type": "factual",
+          "query": "What is a trap state (dead state) in a DFA?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.14"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.14",
+            "Introduction to Theory of Computation.pdf p.19",
+            "Introduction to Theory of Computation.pdf p.21",
+            "Introduction to Theory of Computation.pdf p.20",
+            "Introduction to Theory of Computation.pdf p.5"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q03",
+          "type": "factual",
+          "query": "What is the maximum number of states a DFA can have after converting an NFA with m states?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.31"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.31",
+            "Introduction to Theory of Computation.pdf p.40",
+            "Introduction to Theory of Computation.pdf p.30",
+            "Introduction to Theory of Computation.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.22"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q04",
+          "type": "factual",
+          "query": "Which edit operations are allowed in the minimum edit distance method for spelling correction?",
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.6",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.7",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.10",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q05",
+          "type": "factual",
+          "query": "When correcting 'smple' in the sentence 'This is a smple text.', which correction is chosen and why?",
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.4",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.7",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.3"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q06",
+          "type": "factual",
+          "query": "Which classes of languages are defined by finite-state automata, pushdown automata and Turing machines?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.3",
+            "PPT-2 morphology and FSM.pdf p.16"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.16",
+            "PPT-2 morphology and FSM.pdf p.21",
+            "Introduction to Theory of Computation.pdf p.4",
+            "Introduction to Theory of Computation.pdf p.3",
+            "Introduction to Theory of Computation.pdf p.5"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q07",
+          "type": "factual",
+          "query": "By how much can tokenization length differ between languages for equivalent text?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.71"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.71",
+            "PPT -3 tokenization-multilinguality.pdf p.17",
+            "PPT -3 tokenization-multilinguality.pdf p.16",
+            "PPT -3 tokenization-multilinguality.pdf p.8",
+            "01_tokenization.md p.1"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q08",
+          "type": "conceptual",
+          "query": "How is the dynamic programming table for minimum edit distance initialised, filled and read?",
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.8",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.11"
+          ],
+          "retrieved": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.10",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.8",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.14"
+          ],
+          "first_gold_rank": 2
+        },
+        {
+          "id": "q09",
+          "type": "conceptual",
+          "query": "Describe the training algorithm of Byte Pair Encoding.",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.25"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.25",
+            "PPT -3 tokenization-multilinguality.pdf p.54",
+            "PPT -3 tokenization-multilinguality.pdf p.24",
+            "PPT -3 tokenization-multilinguality.pdf p.3",
+            "PPT -3 tokenization-multilinguality.pdf p.26"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q10",
+          "type": "conceptual",
+          "query": "What problem does subword tokenization solve compared with word and character tokenization?",
+          "gold": [
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.22"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.22",
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.57",
+            "PPT -3 tokenization-multilinguality.pdf p.23",
+            "PPT -3 tokenization-multilinguality.pdf p.75"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q11",
+          "type": "conceptual",
+          "query": "Why does morphological analysis need a nondeterministic finite-state transducer?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.39"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.15",
+            "PPT1 morphology and FSM.pdf p.29",
+            "PPT-2 morphology and FSM.pdf p.39",
+            "PPT-2 morphology and FSM.pdf p.26",
+            "PPT-2 morphology and FSM.pdf p.31"
+          ],
+          "first_gold_rank": 3
+        },
+        {
+          "id": "q12",
+          "type": "conceptual",
+          "query": "What is the curse of multilinguality?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.69"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.69",
+            "PPT -3 tokenization-multilinguality.pdf p.70",
+            "PPT -3 tokenization-multilinguality.pdf p.7",
+            "PPT -3 tokenization-multilinguality.pdf p.62",
+            "PPT -3 tokenization-multilinguality.pdf p.67"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q13",
+          "type": "conceptual",
+          "query": "What is the e-insertion spelling rule and how can it be implemented?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.35",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT1 morphology and FSM.pdf p.17"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.34",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT1 morphology and FSM.pdf p.15",
+            "PPT1 morphology and FSM.pdf p.14",
+            "PPT1 morphology and FSM.pdf p.17"
+          ],
+          "first_gold_rank": 2
+        },
+        {
+          "id": "q14",
+          "type": "conceptual",
+          "query": "How is the start state of the DFA determined when converting an NFA to a DFA?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.18"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.31",
+            "Introduction to Theory of Computation.pdf p.28",
+            "Introduction to Theory of Computation.pdf p.30",
+            "Introduction to Theory of Computation.pdf p.21"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q15",
+          "type": "comparison",
+          "query": "Compare a DFA with an NFA.",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.7"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.6",
+            "Introduction to Theory of Computation.pdf p.31",
+            "Introduction to Theory of Computation.pdf p.7",
+            "Introduction to Theory of Computation.pdf p.29",
+            "Introduction to Theory of Computation.pdf p.18"
+          ],
+          "first_gold_rank": 3
+        },
+        {
+          "id": "q16",
+          "type": "comparison",
+          "query": "What is the difference between inflectional and derivational morphology?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.6"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.8",
+            "PPT1 morphology and FSM.pdf p.9",
+            "PPT-2 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.12"
+          ],
+          "first_gold_rank": 3
+        },
+        {
+          "id": "q17",
+          "type": "comparison",
+          "query": "How do isolating, agglutinative and inflected languages differ in word structure?",
+          "gold": [
+            "PPT1 morphology and FSM.pdf p.7"
+          ],
+          "retrieved": [
+            "PPT1 morphology and FSM.pdf p.7",
+            "PPT1 morphology and FSM.pdf p.8",
+            "PPT-2 morphology and FSM.pdf p.3",
+            "PPT-2 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.29"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q18",
+          "type": "comparison",
+          "query": "What are the pros and cons of word tokenization versus character or byte tokenization?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.19",
+            "PPT -3 tokenization-multilinguality.pdf p.21"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.21",
+            "PPT -3 tokenization-multilinguality.pdf p.75",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2",
+            "PPT -3 tokenization-multilinguality.pdf p.18",
+            "PPT -3 tokenization-multilinguality.pdf p.3"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q19",
+          "type": "keyword",
+          "query": "What is SolidGoldMagikarp and why did it cause problems?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.61"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.60",
+            "PPT -3 tokenization-multilinguality.pdf p.60",
+            "PPT -3 tokenization-multilinguality.pdf p.57",
+            "PPT -3 tokenization-multilinguality.pdf p.61",
+            "01_tokenization.md p.1"
+          ],
+          "first_gold_rank": 4
+        },
+        {
+          "id": "q20",
+          "type": "keyword",
+          "query": "What is SentencePiece and which models use it?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.56"
+          ],
+          "retrieved": [
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.56",
+            "01_tokenization.md p.1",
+            "02_ngram_language_models.md p.1",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.2"
+          ],
+          "first_gold_rank": 2
+        },
+        {
+          "id": "q21",
+          "type": "keyword",
+          "query": "What do the caret ^ and dollar $ symbols mean in a regular expression?",
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.34"
+          ],
+          "retrieved": [
+            "Introduction to Theory of Computation.pdf p.34",
+            "PPT-2 morphology and FSM.pdf p.25",
+            "Introduction to Theory of Computation.pdf p.32",
+            "Introduction to Theory of Computation.pdf p.33",
+            "Introduction to Theory of Computation.pdf p.35"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q22",
+          "type": "followup",
+          "query": "What is Byte Pair Encoding and why is it so widely used?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.23",
+            "PPT -3 tokenization-multilinguality.pdf p.24"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.24",
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.26",
+            "PPT -3 tokenization-multilinguality.pdf p.31",
+            "PPT -3 tokenization-multilinguality.pdf p.36"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q23",
+          "type": "followup",
+          "query": "How is new text tokenized with Byte Pair Encoding (BPE) at test time?",
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.54"
+          ],
+          "retrieved": [
+            "PPT -3 tokenization-multilinguality.pdf p.54",
+            "PPT -3 tokenization-multilinguality.pdf p.25",
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.40",
+            "PPT -3 tokenization-multilinguality.pdf p.32"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q24",
+          "type": "followup",
+          "query": "What is a finite-state transducer?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT-2 morphology and FSM.pdf p.32"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT-2 morphology and FSM.pdf p.32",
+            "PPT1 morphology and FSM.pdf p.18",
+            "PPT-2 morphology and FSM.pdf p.26",
+            "PPT1 morphology and FSM.pdf p.13"
+          ],
+          "first_gold_rank": 1
+        },
+        {
+          "id": "q25",
+          "type": "followup",
+          "query": "And what does inverting a finite-state transducer do?",
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.33"
+          ],
+          "retrieved": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT-2 morphology and FSM.pdf p.32",
+            "PPT1 morphology and FSM.pdf p.18",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT-2 morphology and FSM.pdf p.21"
+          ],
+          "first_gold_rank": null
+        }
+      ]
+    }
+  ],
+  "chunk_sweep": [
+    {
+      "chunk_size_tokens": 200,
+      "n_chunks": 330,
+      "avg_tokens_per_chunk": 140.21212121212122,
+      "metrics": {
+        "hit@1": 0.68,
+        "recall@1": 0.58,
+        "ndcg@1": 0.68,
+        "hit@3": 0.88,
+        "recall@3": 0.7466666666666667,
+        "ndcg@3": 0.7123066480891123,
+        "hit@5": 0.92,
+        "recall@5": 0.8333333333333333,
+        "ndcg@5": 0.7554424008764675,
+        "mrr": 0.7766666666666667
+      }
+    },
+    {
+      "chunk_size_tokens": 400,
+      "n_chunks": 215,
+      "avg_tokens_per_chunk": 188.0186046511628,
+      "metrics": {
+        "hit@1": 0.68,
+        "recall@1": 0.58,
+        "ndcg@1": 0.68,
+        "hit@3": 0.92,
+        "recall@3": 0.7866666666666667,
+        "ndcg@3": 0.7355178165231848,
+        "hit@5": 0.96,
+        "recall@5": 0.8733333333333333,
+        "ndcg@5": 0.7786535693105401,
+        "mrr": 0.79
+      }
+    },
+    {
+      "chunk_size_tokens": 600,
+      "n_chunks": 203,
+      "avg_tokens_per_chunk": 195.65024630541873,
+      "metrics": {
+        "hit@1": 0.68,
+        "recall@1": 0.58,
+        "ndcg@1": 0.68,
+        "hit@3": 0.96,
+        "recall@3": 0.8066666666666668,
+        "ndcg@3": 0.7400437042338031,
+        "hit@5": 0.96,
+        "recall@5": 0.8533333333333333,
+        "ndcg@5": 0.7659523946982227,
+        "mrr": 0.7933333333333334
+      }
+    }
+  ],
+  "generation": [
+    {
+      "name": "default",
+      "answer_task": "answer",
+      "n_questions": 30,
+      "metrics": {
+        "faithfulness": 0.9895833333333334,
+        "relevancy": 4.866666666666666,
+        "citation_validity": 1.0,
+        "repair_rate": 0.0,
+        "citation_hit_rate": 1.0,
+        "abstention_accuracy": 0.9666666666666667,
+        "abstention_precision": 0.8333333333333334,
+        "abstention_recall": 1.0,
+        "no_llm_abstentions": 3.0,
+        "latency_ms_p50": 3625.4,
+        "latency_ms_p95": 31452.7,
+        "prompt_tokens_per_query": 1598.3703703703704,
+        "errors": 0.0
+      },
+      "per_question": [
+        {
+          "id": "q01",
+          "type": "factual",
+          "question": "What are the five components in the formal definition of a finite automaton?",
+          "standalone_question": "What are the five components in the formal definition of a finite automaton?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "In the formal definition, a finite automaton is defined as a 5-tuple $\\{ Q, \\Sigma, q, F, \\delta \\}$ containing the following five components [S1]:\n\n- **$Q$**: A finite set of states (or set of all states) [S1].\n- **$\\Sigma$**: A set of input symbols that the machine takes as input [S1].\n- **$q$**: The initial state (starting state of the machine) [S1].\n- **$F$**: A set of final states [S1].\n- **$\\delta$**: The transition function, defined for a DFA as $\\delta : Q \\times \\Sigma \\to Q$ [S1].",
+          "confidence": "high",
+          "cited_pages": [
+            "Introduction to Theory of Computation.pdf p.5"
+          ],
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.5"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 984.7,
+          "prompt_tokens": 0,
+          "output_tokens": 0,
+          "error": null
+        },
+        {
+          "id": "q02",
+          "type": "factual",
+          "question": "What is a trap state (dead state) in a DFA?",
+          "standalone_question": "What is a trap state (dead state) in a DFA?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "A **trap state** (also called a **dead state**) in a DFA is a state entered by a transition from which the machine can never escape [S1]. In other words, it is a state that cannot reach or lead to a final state [S1][S2]. Because dead states cannot lead to a final state, they can be removed when simplifying or minimizing the DFA [S2].",
+          "confidence": "high",
+          "cited_pages": [
+            "Introduction to Theory of Computation.pdf p.14",
+            "Introduction to Theory of Computation.pdf p.19"
+          ],
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.14"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 975.4,
+          "prompt_tokens": 0,
+          "output_tokens": 0,
+          "error": null
+        },
+        {
+          "id": "q03",
+          "type": "factual",
+          "question": "What is the maximum number of states a DFA can have after converting an NFA with m states?",
+          "standalone_question": "What is the maximum number of states a DFA can have after converting an NFA with m states?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "The maximum number of states present in a DFA after converting an NFA with $m$ states is $2^m$ (or 2 to the power of the number of states in the NFA) [S1]. The relationship between the number of states in the DFA ($n$) and the NFA ($m$) is given as $1 \\le n \\le 2^m$ [S1].",
+          "confidence": "high",
+          "cited_pages": [
+            "Introduction to Theory of Computation.pdf p.31"
+          ],
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.31"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3625.3,
+          "prompt_tokens": 1759,
+          "output_tokens": 121,
+          "error": null
+        },
+        {
+          "id": "q04",
+          "type": "factual",
+          "question": "Which edit operations are allowed in the minimum edit distance method for spelling correction?",
+          "standalone_question": "Which edit operations are allowed in the minimum edit distance method for spelling correction?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "Under the Minimum Edit Distance method for spelling correction, the allowed operations are:\n\n- **Insertion**: Inserting a character (e.g., *bok* → *book* by inserting 'o') [S1][S2].\n- **Deletion**: Removing a character (e.g., *books* → *book* by deleting 's') [S1][S2].\n- **Substitution**: Replacing one character with another (e.g., *cat* → *cut* by substituting 'a' with 'u') [S1][S2].\n- **Transposition**: Listed among the allowed operations under the Minimum Edit Distance method [S1].\n\nEach operation typically carries a cost of 1 [S2][S4].",
+          "confidence": "high",
+          "cited_pages": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.6",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.10"
+          ],
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3569.1,
+          "prompt_tokens": 1854,
+          "output_tokens": 205,
+          "error": null
+        },
+        {
+          "id": "q05",
+          "type": "factual",
+          "question": "When correcting 'smple' in the sentence 'This is a smple text.', which correction is chosen and why?",
+          "standalone_question": "When correcting 'smple' in the sentence 'This is a smple text.', which correction is chosen and why?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "The chosen correction for \"smple\" is **\"simple\"** [S1]. \n\nThis correction is selected because the word with the minimum edit distance is chosen as the correction [S2]. Among the candidate corrections evaluated for \"smple\", \"simple\" has the smallest edit distance [S1]:\n- **simple**: Edit Distance = 1 [S1]\n- **sample**: Edit Distance = 2 [S1]\n- **smile**: Edit Distance = 2 [S1]",
+          "confidence": "high",
+          "cited_pages": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9"
+          ],
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3679.8,
+          "prompt_tokens": 1900,
+          "output_tokens": 146,
+          "error": null
+        },
+        {
+          "id": "q06",
+          "type": "factual",
+          "question": "Which classes of languages are defined by finite-state automata, pushdown automata and Turing machines?",
+          "standalone_question": "Which classes of languages are defined by finite-state automata, pushdown automata and Turing machines?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "Based on the course excerpts, these automata define the following language classes:\n\n- **Finite-state automata** define **regular languages** [S1][S4].\n- **Pushdown automata** define **context-free languages** [S1][S4].\n- **Turing machines** define **recursively enumerable languages** (as well as recursive languages) [S1][S4].",
+          "confidence": "high",
+          "cited_pages": [
+            "Introduction to Theory of Computation.pdf p.3",
+            "PPT-2 morphology and FSM.pdf p.16"
+          ],
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.3",
+            "PPT-2 morphology and FSM.pdf p.16"
+          ],
+          "gold_cited": true,
+          "faithfulness": 0.75,
+          "unsupported_claims": [
+            "Turing machines define recursive languages."
+          ],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 7299.2,
+          "prompt_tokens": 1726,
+          "output_tokens": 127,
+          "error": null
+        },
+        {
+          "id": "q07",
+          "type": "factual",
+          "question": "By how much can tokenization length differ between languages for equivalent text?",
+          "standalone_question": "By how much can tokenization length differ between languages for equivalent text?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "Tokenization length can differ by up to 15x between languages for equivalent text [S1].",
+          "confidence": "high",
+          "cited_pages": [
+            "PPT -3 tokenization-multilinguality.pdf p.71"
+          ],
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.71"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 5395.1,
+          "prompt_tokens": 1675,
+          "output_tokens": 57,
+          "error": null
+        },
+        {
+          "id": "q08",
+          "type": "conceptual",
+          "question": "How is the dynamic programming table for minimum edit distance initialised, filled and read?",
+          "standalone_question": "How is the dynamic programming table for minimum edit distance initialised, filled and read?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "The dynamic programming table $D$ of size $(m + 1) \\times (n + 1)$ is constructed with rows representing the source word $X$ (length $m$) and columns representing the target word $Y$ (length $n$) [S1][S2].\n\n- **Initialization:** The base cases are initialized as $D[i][0] = i$ (representing deleting all characters) and $D[0][j] = j$ (representing inserting all characters) [S2].\n- **Filling:** The matrix is filled row by row using a recurrence relation, where each cell takes into account an operation cost (cost = 0 if characters match, else 1) [S2].\n- **Reading:** The final minimum edit distance is read from the bottom-right cell, $D[m][n]$, which indicates the minimum number of edits required to convert $X$ into $Y$ [S2].",
+          "confidence": "high",
+          "cited_pages": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.8",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.10"
+          ],
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.8",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.11"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 10761.0,
+          "prompt_tokens": 1730,
+          "output_tokens": 242,
+          "error": null
+        },
+        {
+          "id": "q09",
+          "type": "conceptual",
+          "question": "Describe the training algorithm of Byte Pair Encoding.",
+          "standalone_question": "Describe the training algorithm of Byte Pair Encoding.",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "The Byte Pair Encoding (BPE) training algorithm takes a training corpus $D$ and a desired vocabulary size $N$, and follows these steps [S1]:\n\n1. **Pre-tokenize:** Split the corpus $D$ on whitespace [S1].\n2. **Initialize:** Set the vocabulary $V$ as the bytes present in $D$ [S1].\n3. **Tokenize corpus:** Convert $D$ into a sequence of tokens (i.e., bytes) [S1].\n4. **Iterative merging:** While $|V| < N$ [S1]:\n   - Count all bigrams in $D$ [S1].\n   - Merge the most frequent pair $(v_i, v_j)$ into a new token $v_n = v_i v_j$, where $n = |V| + 1$ [S1].\n   - Replace all instances of $v_i v_j$ in $D$ with the new token $v_n$ [S1].",
+          "confidence": "high",
+          "cited_pages": [
+            "PPT -3 tokenization-multilinguality.pdf p.25"
+          ],
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.25"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3292.5,
+          "prompt_tokens": 1434,
+          "output_tokens": 264,
+          "error": null
+        },
+        {
+          "id": "q10",
+          "type": "conceptual",
+          "question": "What problem does subword tokenization solve compared with word and character tokenization?",
+          "standalone_question": "What problem does subword tokenization solve compared with word and character tokenization?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "Subword tokenization combines the efficiency of word tokenization with the high coverage of character tokenization [S1].\n\nWord-level vocabularies face two major drawbacks: they grow very large, and any word unseen during training becomes an out-of-vocabulary or unknown token, usually marked as `[UNK]` [S2]. On the other hand, subword methods keep frequent words whole while breaking rare words down into smaller, reusable pieces [S2]. As a result, the vocabulary stays at a fixed target size (typically 30k to 50k tokens) and eliminates true out-of-vocabulary (OOV) words, ensuring everything can be represented using the vocabulary [S2][S3].",
+          "confidence": "high",
+          "cited_pages": [
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.22",
+            "PPT -3 tokenization-multilinguality.pdf p.57"
+          ],
+          "gold": [
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.22"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3609.3,
+          "prompt_tokens": 1961,
+          "output_tokens": 193,
+          "error": null
+        },
+        {
+          "id": "q11",
+          "type": "conceptual",
+          "question": "Why does morphological analysis need a nondeterministic finite-state transducer?",
+          "standalone_question": "Why does morphological analysis need a nondeterministic finite-state transducer?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "Morphological analysis needs a nondeterministic finite-state transducer (FST) because analyzing words often requires disambiguation, even though generating words is generally unambiguous [S3]. \n\nA single word form can have multiple morphological analyses—for example, *book* can be analyzed as *book +N +sg* or *book +V* [S3]. Because of this ambiguity, a nondeterministic FST is needed, alongside a scoring function and context (e.g., \"I read a **book**\" vs. \"I **book** flights\") to identify which analysis is more likely [S3]. Furthermore, an efficiency issue arises because not every nondeterministic FST can be converted into a deterministic one [S3].",
+          "confidence": "high",
+          "cited_pages": [
+            "PPT-2 morphology and FSM.pdf p.39"
+          ],
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.39"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3270.7,
+          "prompt_tokens": 1258,
+          "output_tokens": 189,
+          "error": null
+        },
+        {
+          "id": "q12",
+          "type": "conceptual",
+          "question": "What is the curse of multilinguality?",
+          "standalone_question": "What is the curse of multilinguality?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "The **curse of multilinguality** refers to the phenomenon where adding more languages helps cross-lingual transfer only up to a certain point [S1]. Beyond that point, performance begins to degrade under a fixed model capacity [S1].\n\nThis occurs because a model has finite parameters, meaning adding more languages forces each language to get a smaller \"share\" of the model's capacity [S1]:\n- **High-resource languages** (such as English and French) experience a drop in performance as more languages are added [S1].\n- **Low-resource languages** initially gain benefits from cross-lingual transfer, but eventually suffer as well [S1].\n\nFor example, on cross-lingual natural language inference (XNLI), XLM-R's accuracy decreases from 71.8% with 7 languages down to 67.7% with 100 languages when model capacity is fixed [S1].",
+          "confidence": "high",
+          "cited_pages": [
+            "PPT -3 tokenization-multilinguality.pdf p.69"
+          ],
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.69"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3403.2,
+          "prompt_tokens": 1860,
+          "output_tokens": 240,
+          "error": null
+        },
+        {
+          "id": "q13",
+          "type": "conceptual",
+          "question": "What is the e-insertion spelling rule and how can it be implemented?",
+          "standalone_question": "What is the e-insertion spelling rule and how can it be implemented?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "The **e-insertion** rule is an English spelling change at morpheme boundaries where an \"e\" is inserted when realizing an underlying morpheme, such as transforming *fox + s* into *foxes* or *box ^ s* into *boxes* [S1][S2]. \n\nIn this rule, an empty string ($ε$) maps to *e* in the context of an affix boundary ($^$) following letters such as *s*, *x*, or *z* before an *s* (e.g., mapping an underlying form to a surface form) [S2][S5]. The same rule applies to plurals and 3rd-person singular verbs [S2].\n\nRegarding its implementation, the rule is formalisable and implementable as a **finite state transducer** [S2].",
+          "confidence": "high",
+          "cited_pages": [
+            "PPT-2 morphology and FSM.pdf p.34",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT1 morphology and FSM.pdf p.17"
+          ],
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.35",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT1 morphology and FSM.pdf p.17"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 31452.7,
+          "prompt_tokens": 1141,
+          "output_tokens": 223,
+          "error": null
+        },
+        {
+          "id": "q14",
+          "type": "conceptual",
+          "question": "How is the start state of the DFA determined when converting an NFA to a DFA?",
+          "standalone_question": "How is the start state of the DFA determined when converting an NFA to a DFA?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "The DFA's start state is determined as the set of all possible starting states in the NFA, which is the \"epsilon closure\" of the NFA's start state [S1]. The epsilon closure is defined as the set of all states that can be reached from the NFA's start state by following epsilon transitions [S1].",
+          "confidence": "high",
+          "cited_pages": [
+            "Introduction to Theory of Computation.pdf p.18"
+          ],
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.18"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 6445.7,
+          "prompt_tokens": 1901,
+          "output_tokens": 107,
+          "error": null
+        },
+        {
+          "id": "q15",
+          "type": "comparison",
+          "question": "Compare a DFA with an NFA.",
+          "standalone_question": "Compare a DFA with an NFA.",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "A DFA (Deterministic Finite Automata) and an NFA (Non-Deterministic Finite Automata) differ in determinism, transitions, and design flexibility, though both recognize regular languages and are equivalent in computational power [S3].\n\nKey differences include:\n\n- **Transitions:** A DFA has exactly one transition (one and only one move) per input symbol from a given state, uniquely determining the next state [S3][S5]. An NFA can have zero, one, or multiple transitions for the same input symbol, leading to multiple possible next states [S1][S3][S5].\n- **Null ($\\\\varepsilon$) Moves:** NFAs allow null ($\\\\varepsilon$) moves where states change without consuming an input symbol, whereas DFAs do not allow $\\\\varepsilon$ moves [S1][S3][S5].\n- **Acceptance:** An NFA accepts an input string if any transition path leads to an accepting state [S3].\n- **Design and States:** NFAs are more flexible and easier to design [S3]. While DFAs can be simpler, they can sometimes be larger: an equivalent DFA may require up to $2^m$ states, where $m$ is the number of states in the NFA [S2][S3].",
+          "confidence": "high",
+          "cited_pages": [
+            "Introduction to Theory of Computation.pdf p.6",
+            "Introduction to Theory of Computation.pdf p.7",
+            "Introduction to Theory of Computation.pdf p.18",
+            "Introduction to Theory of Computation.pdf p.31"
+          ],
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.7"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 5533.8,
+          "prompt_tokens": 1799,
+          "output_tokens": 318,
+          "error": null
+        },
+        {
+          "id": "q16",
+          "type": "comparison",
+          "question": "What is the difference between inflectional and derivational morphology?",
+          "standalone_question": "What is the difference between inflectional and derivational morphology?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "The primary difference is that **inflection** creates different forms of the same word, whereas **derivation** creates entirely different words from the same lemma [S3].\n\n* **Inflectional morphology** carries grammatical information—such as tense, aspect, number, person, gender, or case (e.g., the plural suffix *+s* or past participle *+ed*) [S4]. In English, inflectional morphology uses suffixes, as well as sound changes (like *sing*, *sang*, *sung*), and its full set of inflections for a stem forms a paradigm [S2][S4].\n* **Derivational morphology** produces new words (such as *grace* $\\Rightarrow$ *disgrace* $\\Rightarrow$ *disgraceful*) [S3]. English uses both prefixes and suffixes for derivation, as well as zero-derivations (e.g., *tango*, *waltz*) [S2].",
+          "confidence": "high",
+          "cited_pages": [
+            "PPT-2 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.9"
+          ],
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.5",
+            "PPT1 morphology and FSM.pdf p.6"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 10482.9,
+          "prompt_tokens": 1186,
+          "output_tokens": 245,
+          "error": null
+        },
+        {
+          "id": "q17",
+          "type": "comparison",
+          "question": "How do isolating, agglutinative and inflected languages differ in word structure?",
+          "standalone_question": "How do isolating, agglutinative and inflected languages differ in word structure?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "Isolating, agglutinative, and inflected languages differ primarily in their number of morphemes per word and how those morphemes convey linguistic information [S1].\n\n* **Isolating languages:** Characterized by a low number of morphemes per word, such as Yoruba [S1].\n* **Synthetic languages:** Feature a high number of morphemes per word and are subdivided into agglutinative and inflected types [S1]:\n  * **Agglutinative languages:** Contain a large number of affixes where each affix carries exactly one piece of linguistic information, such as Turkish [S1].\n  * **Inflected languages:** A single affix carries multiple pieces of linguistic information, such as French [S1].",
+          "confidence": "high",
+          "cited_pages": [
+            "PPT1 morphology and FSM.pdf p.7"
+          ],
+          "gold": [
+            "PPT1 morphology and FSM.pdf p.7"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3421.0,
+          "prompt_tokens": 1226,
+          "output_tokens": 197,
+          "error": null
+        },
+        {
+          "id": "q18",
+          "type": "comparison",
+          "question": "What are the pros and cons of word tokenization versus character or byte tokenization?",
+          "standalone_question": "What are the pros and cons of word tokenization versus character or byte tokenization?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "Word tokenization uses whitespace-delimited words and punctuation, with vocabularies typically truncated to the top frequent words [S4]. Its pros are that tokens represent semantically meaningful language units where one embedding roughly corresponds to one interpretable meaning [S4]. The excerpts do not explicitly list its cons [S4].\n\nIn contrast, character or byte tokenization treats individual characters or bytes as tokens [S1]. Its pros include:\n- A small vocabulary size [S1].\n- Complete input coverage with no out-of-vocabulary (OOV) tokens or glitch tokens [S1][S2].\n- Direct observation of spelling and the character composition of words [S1][S2].\n- Robustness to noise and character-level manipulations [S2].\n\nIts cons are:\n- Really long sequences [S1].\n- Potential difficulty in building higher-level representations, though this is debatable [S1].",
+          "confidence": "high",
+          "cited_pages": [
+            "PPT -3 tokenization-multilinguality.pdf p.18",
+            "PPT -3 tokenization-multilinguality.pdf p.21",
+            "PPT -3 tokenization-multilinguality.pdf p.75"
+          ],
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.19",
+            "PPT -3 tokenization-multilinguality.pdf p.21"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 4244.6,
+          "prompt_tokens": 1509,
+          "output_tokens": 244,
+          "error": null
+        },
+        {
+          "id": "q19",
+          "type": "keyword",
+          "question": "What is SolidGoldMagikarp and why did it cause problems?",
+          "standalone_question": "What is SolidGoldMagikarp and why did it cause problems?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "SolidGoldMagikarp is a famous example of a \"glitch token\"—originally a Reddit username that became a distinct token because it was over-represented in the tokenizer's training data [S4].\n\nIt caused problems because of a misalignment between the tokenizer and language model training corpora: BPE tokenizers and language models can be trained on different datasets [S4]. Consequently, some tokens enter the tokenizer's vocabulary but are rare or completely absent during LM training [S4]. As a result, their embeddings remain essentially randomly initialized or poorly trained, leading to undefined model behavior [S4].\n\nWhen prompted about or asked to repeat the string, models like GPT-3 experienced glitches: the model evaded the question, failed to repeat the token, or hallucinated irrelevant words such as \"distribute\" or \"disperse\" [S2][S4]. Beyond being an oddity, glitch tokens waste vocabulary slots and present an adversarial attack surface [S4].",
+          "confidence": "high",
+          "cited_pages": [
+            "PPT -3 tokenization-multilinguality.pdf p.60",
+            "PPT -3 tokenization-multilinguality.pdf p.61"
+          ],
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.61"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 4344.2,
+          "prompt_tokens": 2228,
+          "output_tokens": 243,
+          "error": null
+        },
+        {
+          "id": "q20",
+          "type": "keyword",
+          "question": "What is SentencePiece and which models use it?",
+          "standalone_question": "What is SentencePiece and which models use it?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "**SentencePiece** is a tokenizer library (not an algorithm) that implements Byte Pair Encoding (BPE) and Unigram Language Model (LM) tokenization [S2]. It treats whitespace as an ordinary or basic symbol (written as \"▁\" in its unigram model), allowing it to work directly on raw text in any language without requiring whitespace-based pre-tokenization [S1][S2][S3].\n\nSentencePiece is used by several models, including:\n- **T5** [S2]\n- **Llama 2** [S2]\n- **XLM-R** [S2]\n- **Gemma** [S2]\n- Many multilingual models [S2]",
+          "confidence": "high",
+          "cited_pages": [
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.56"
+          ],
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.56"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3831.5,
+          "prompt_tokens": 2441,
+          "output_tokens": 196,
+          "error": null
+        },
+        {
+          "id": "q21",
+          "type": "keyword",
+          "question": "What do the caret ^ and dollar $ symbols mean in a regular expression?",
+          "standalone_question": "What do the caret ^ and dollar $ symbols mean in a regular expression?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "In regular expressions, the caret `^` and dollar `$` symbols represent line or string anchors [S1][S2]:\n\n- **The caret (`^`) symbol:** Asserts the match starts at the beginning of the string or line [S1][S2]. For example, `^\\d{3}` matches `901` in `901-333` [S1]. (Note: Inside square brackets as `[^ ]`, it also denotes a negated character class to match characters not listed [S1][S2]).\n- **The dollar (`$`) symbol:** Asserts the match ends at the end of the string or line [S1][S2]. For example, `\\d{3}$` matches `333` in `901-333` [S1].",
+          "confidence": "high",
+          "cited_pages": [
+            "Introduction to Theory of Computation.pdf p.34",
+            "PPT-2 morphology and FSM.pdf p.25"
+          ],
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.34"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 35130.8,
+          "prompt_tokens": 2019,
+          "output_tokens": 219,
+          "error": null
+        },
+        {
+          "id": "q22",
+          "type": "followup",
+          "question": "What is Byte Pair Encoding and why is it so widely used?",
+          "standalone_question": "What is Byte Pair Encoding and why is it so widely used?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "Byte Pair Encoding (BPE) is a subword tokenization algorithm that starts with a vocabulary of single characters and iteratively merges the most frequent adjacent pair of symbols in the training corpus into a new symbol until a target vocabulary size is reached [S2]. At test time, these learned merges are applied in the same order [S2]. As a subword method, it keeps frequent words whole and splits rare words into smaller, reusable pieces, eliminating true out-of-vocabulary (OOV) words while maintaining a fixed vocabulary size [S2].\n\nBPE is widely used because it is simple, easy to implement, efficient, and deterministic [S1]. It was popularized by GPT-2, establishing a standard for language model training, and is now the tokenization algorithm used across all popular and frontier language models (such as GPT-4o, Gemini, Llama, and DeepSeek) [S1]. Additionally, GPT models utilize a byte-level variant of BPE [S2].",
+          "confidence": "high",
+          "cited_pages": [
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.24"
+          ],
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.23",
+            "PPT -3 tokenization-multilinguality.pdf p.24"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3625.4,
+          "prompt_tokens": 1768,
+          "output_tokens": 245,
+          "error": null
+        },
+        {
+          "id": "q23",
+          "type": "followup",
+          "question": "How is new text tokenized with it at test time?",
+          "standalone_question": "How is new text tokenized with Byte Pair Encoding (BPE) at test time?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "At test time, new text is tokenized by splitting it into base units (such as bytes or characters) and applying the learned merge rules in the exact order they were learned during training [S1][S3]. \n\nSpecifically, the process works as follows:\n- The input text is first split into its base elements, such as bytes [S1].\n- The algorithm consults the ordered merge list generated during training [S1].\n- It iteratively applies each merge rule in order across the tokens, combining adjacent token pairs into larger subwords whenever a match is found [S1][S3].",
+          "confidence": "high",
+          "cited_pages": [
+            "01_tokenization.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.54"
+          ],
+          "gold": [
+            "PPT -3 tokenization-multilinguality.pdf p.54"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3189.1,
+          "prompt_tokens": 1694,
+          "output_tokens": 168,
+          "error": null
+        },
+        {
+          "id": "q24",
+          "type": "followup",
+          "question": "What is a finite-state transducer?",
+          "standalone_question": "What is a finite-state transducer?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "A **finite-state transducer** (FST) is a formal model $T = \\langle Q, \\Sigma, \\Delta, q_0, F, \\delta, \\sigma \\rangle$ that defines a relation between two regular languages, $L_{in}$ and $L_{out}$ [S1][S2]. \n\nFormally, it consists of:\n- A finite set of states $Q = \\{q_0, q_1, \\dots, q_n\\}$ [S1]\n- A finite alphabet of input symbols $\\Sigma$ [S1]\n- A finite alphabet of output symbols $\\Delta$ [S1]\n- A designated start state $q_0 \\in Q$ [S1]\n- A set of final states $F \\subseteq Q$ [S1]\n- A transition function $\\delta: Q \\times \\Sigma \\to 2^Q$ [S1]\n- An output function $\\sigma: Q \\times \\Sigma \\to \\Delta^*$ (where $\\sigma(q, w) = \\omega$ emits output $\\omega \\in \\Delta^*$ given current state $q$ and input $w$) [S1].\n\nIn morphological processing, FSTs are used to map between underlying forms and surface forms (such as mapping `box^s` to `boxes` or `cats` to `cat+N+pl`) [S2][S3][S5].",
+          "confidence": "high",
+          "cited_pages": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT-2 morphology and FSM.pdf p.32",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT1 morphology and FSM.pdf p.18"
+          ],
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT-2 morphology and FSM.pdf p.32"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 10566.2,
+          "prompt_tokens": 1354,
+          "output_tokens": 363,
+          "error": null
+        },
+        {
+          "id": "q25",
+          "type": "followup",
+          "question": "And what does inverting one do?",
+          "standalone_question": "And what does inverting a finite-state transducer do?",
+          "answerable": true,
+          "predicted_answerable": false,
+          "answer": "I couldn't find this in your course material. The provided excerpts describe the formal definition of a finite-state transducer [S1], how it defines a relation between two regular languages [S2], and how it maps between surface and underlying forms [S3][S4], but they do not mention inverting a finite-state transducer.",
+          "confidence": "low",
+          "cited_pages": [
+            "PPT-2 morphology and FSM.pdf p.31",
+            "PPT-2 morphology and FSM.pdf p.32",
+            "PPT1 morphology and FSM.pdf p.13",
+            "PPT1 morphology and FSM.pdf p.18"
+          ],
+          "gold": [
+            "PPT-2 morphology and FSM.pdf p.33"
+          ],
+          "gold_cited": false,
+          "faithfulness": null,
+          "unsupported_claims": [],
+          "relevancy": 1,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3183.0,
+          "prompt_tokens": 1510,
+          "output_tokens": 114,
+          "error": null
+        },
+        {
+          "id": "q26",
+          "type": "unanswerable",
+          "question": "How does RLHF work to align large language models?",
+          "standalone_question": "How does RLHF work to align large language models?",
+          "answerable": false,
+          "predicted_answerable": false,
+          "answer": "I couldn't find this in your course material. The closest related topics covered in the excerpts are tokenization methods (such as BPE, WordPiece, and Unigram language models) [S2], the role of tokenizers in language models [S4][S5], and n-gram language models, including maximum likelihood estimation and smoothing techniques [S1][S3].",
+          "confidence": "low",
+          "cited_pages": [
+            "01_tokenization.md p.1",
+            "02_ngram_language_models.md p.1",
+            "PPT -3 tokenization-multilinguality.pdf p.8",
+            "PPT -3 tokenization-multilinguality.pdf p.16"
+          ],
+          "gold": [],
+          "gold_cited": null,
+          "faithfulness": null,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3791.2,
+          "prompt_tokens": 2070,
+          "output_tokens": 126,
+          "error": null
+        },
+        {
+          "id": "q27",
+          "type": "unanswerable",
+          "question": "How does the Viterbi algorithm find the most likely tag sequence in a hidden Markov model?",
+          "standalone_question": "How does the Viterbi algorithm find the most likely tag sequence in a hidden Markov model?",
+          "answerable": false,
+          "predicted_answerable": false,
+          "answer": "I couldn't find this in your course material. The closest related topics covered in the excerpts are the Markov assumption in n-gram language models, smoothing methods, subword tokenization algorithms, and spelling error detection and correction.",
+          "confidence": "low",
+          "cited_pages": [],
+          "gold": [],
+          "gold_cited": null,
+          "faithfulness": null,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 28141.3,
+          "prompt_tokens": 2153,
+          "output_tokens": 79,
+          "error": null
+        },
+        {
+          "id": "q28",
+          "type": "unanswerable",
+          "question": "What does the BLEU score measure in machine translation?",
+          "standalone_question": "What does the BLEU score measure in machine translation?",
+          "answerable": false,
+          "predicted_answerable": false,
+          "answer": "I couldn't find this in your course material.",
+          "confidence": "low",
+          "cited_pages": [],
+          "gold": [],
+          "gold_cited": null,
+          "faithfulness": null,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": false,
+          "latency_ms": 870.9,
+          "prompt_tokens": 0,
+          "output_tokens": 0,
+          "error": null
+        },
+        {
+          "id": "q29",
+          "type": "unanswerable",
+          "question": "How does beam search decoding work?",
+          "standalone_question": "How does beam search decoding work?",
+          "answerable": false,
+          "predicted_answerable": false,
+          "answer": "I couldn't find this in your course material.",
+          "confidence": "low",
+          "cited_pages": [],
+          "gold": [],
+          "gold_cited": null,
+          "faithfulness": null,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": false,
+          "latency_ms": 795.8,
+          "prompt_tokens": 0,
+          "output_tokens": 0,
+          "error": null
+        },
+        {
+          "id": "q30",
+          "type": "unanswerable",
+          "question": "How does Latent Dirichlet Allocation discover topics in a collection of documents?",
+          "standalone_question": "How does Latent Dirichlet Allocation discover topics in a collection of documents?",
+          "answerable": false,
+          "predicted_answerable": false,
+          "answer": "I couldn't find this in your course material.",
+          "confidence": "low",
+          "cited_pages": [],
+          "gold": [],
+          "gold_cited": null,
+          "faithfulness": null,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": false,
+          "latency_ms": 825.8,
+          "prompt_tokens": 0,
+          "output_tokens": 0,
+          "error": null
+        }
+      ]
+    },
+    {
+      "name": "minimal_prompt",
+      "answer_task": "answer_minimal",
+      "n_questions": 10,
+      "metrics": {
+        "faithfulness": 1.0,
+        "relevancy": 5.0,
+        "citation_validity": 1.0,
+        "repair_rate": 0.0,
+        "citation_hit_rate": 1.0,
+        "abstention_accuracy": 1.0,
+        "abstention_precision": 1.0,
+        "abstention_recall": 1.0,
+        "no_llm_abstentions": 3.0,
+        "latency_ms_p50": 887.3,
+        "latency_ms_p95": 6479.8,
+        "prompt_tokens_per_query": 1218.7142857142858,
+        "errors": 0.0
+      },
+      "per_question": [
+        {
+          "id": "q26",
+          "type": "unanswerable",
+          "question": "How does RLHF work to align large language models?",
+          "standalone_question": "How does RLHF work to align large language models?",
+          "answerable": false,
+          "predicted_answerable": false,
+          "answer": "I am sorry, but the provided excerpts do not contain information on how Reinforcement Learning from Human Feedback (RLHF) works to align large language models. The provided materials cover n-gram language models, smoothing techniques, and tokenization methods.",
+          "confidence": "low",
+          "cited_pages": [],
+          "gold": [],
+          "gold_cited": null,
+          "faithfulness": null,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 4962.8,
+          "prompt_tokens": 1829,
+          "output_tokens": 82,
+          "error": null
+        },
+        {
+          "id": "q27",
+          "type": "unanswerable",
+          "question": "How does the Viterbi algorithm find the most likely tag sequence in a hidden Markov model?",
+          "standalone_question": "How does the Viterbi algorithm find the most likely tag sequence in a hidden Markov model?",
+          "answerable": false,
+          "predicted_answerable": false,
+          "answer": "I am sorry, but the provided excerpts do not contain information about the Viterbi algorithm or finding tag sequences in Hidden Markov Models.",
+          "confidence": "low",
+          "cited_pages": [],
+          "gold": [],
+          "gold_cited": null,
+          "faithfulness": null,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3514.8,
+          "prompt_tokens": 1912,
+          "output_tokens": 60,
+          "error": null
+        },
+        {
+          "id": "q28",
+          "type": "unanswerable",
+          "question": "What does the BLEU score measure in machine translation?",
+          "standalone_question": "What does the BLEU score measure in machine translation?",
+          "answerable": false,
+          "predicted_answerable": false,
+          "answer": "I couldn't find this in your course material.",
+          "confidence": "low",
+          "cited_pages": [],
+          "gold": [],
+          "gold_cited": null,
+          "faithfulness": null,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": false,
+          "latency_ms": 859.5,
+          "prompt_tokens": 0,
+          "output_tokens": 0,
+          "error": null
+        },
+        {
+          "id": "q29",
+          "type": "unanswerable",
+          "question": "How does beam search decoding work?",
+          "standalone_question": "How does beam search decoding work?",
+          "answerable": false,
+          "predicted_answerable": false,
+          "answer": "I couldn't find this in your course material.",
+          "confidence": "low",
+          "cited_pages": [],
+          "gold": [],
+          "gold_cited": null,
+          "faithfulness": null,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": false,
+          "latency_ms": 843.0,
+          "prompt_tokens": 0,
+          "output_tokens": 0,
+          "error": null
+        },
+        {
+          "id": "q30",
+          "type": "unanswerable",
+          "question": "How does Latent Dirichlet Allocation discover topics in a collection of documents?",
+          "standalone_question": "How does Latent Dirichlet Allocation discover topics in a collection of documents?",
+          "answerable": false,
+          "predicted_answerable": false,
+          "answer": "I couldn't find this in your course material.",
+          "confidence": "low",
+          "cited_pages": [],
+          "gold": [],
+          "gold_cited": null,
+          "faithfulness": null,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": false,
+          "latency_ms": 887.3,
+          "prompt_tokens": 0,
+          "output_tokens": 0,
+          "error": null
+        },
+        {
+          "id": "q01",
+          "type": "factual",
+          "question": "What are the five components in the formal definition of a finite automaton?",
+          "standalone_question": "What are the five components in the formal definition of a finite automaton?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "In the formal definition, a finite automaton is represented as a 5-tuple {Q, Σ, q, F, δ}, which consists of the following components [S1]:\n\n1. **Q**: A finite set of states (or set of all states) [S1].\n2. **Σ**: A set of input symbols taken as input by the machine [S1].\n3. **q**: The initial state (or starting state) of the machine [S1].\n4. **F**: The set of final states [S1].\n5. **δ**: The transition function, defined as $\\delta : Q \\times \\Sigma \\rightarrow Q$ [S1].",
+          "confidence": "high",
+          "cited_pages": [
+            "Introduction to Theory of Computation.pdf p.5"
+          ],
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.5"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 856.1,
+          "prompt_tokens": 0,
+          "output_tokens": 0,
+          "error": null
+        },
+        {
+          "id": "q02",
+          "type": "factual",
+          "question": "What is a trap state (dead state) in a DFA?",
+          "standalone_question": "What is a trap state (dead state) in a DFA?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "A trap state (also referred to as a dead state) in a DFA is a state entered via a transition from which the machine can never escape [S1]. In other words, it is a state that cannot lead to or reach a final state [S1][S2]. During DFA simplification or minimization, such dead states can be removed [S2].",
+          "confidence": "high",
+          "cited_pages": [
+            "Introduction to Theory of Computation.pdf p.14",
+            "Introduction to Theory of Computation.pdf p.19"
+          ],
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.14"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 849.8,
+          "prompt_tokens": 0,
+          "output_tokens": 0,
+          "error": null
+        },
+        {
+          "id": "q03",
+          "type": "factual",
+          "question": "What is the maximum number of states a DFA can have after converting an NFA with m states?",
+          "standalone_question": "What is the maximum number of states a DFA can have after converting an NFA with m states?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "The maximum number of states a DFA can have after conversion is **2^m** (or 2 raised to the power of the number of states in the NFA) [S1]. The relationship between the number of states in the DFA (*n*) and the NFA (*m*) is given by 1 <= n <= 2^m [S1].",
+          "confidence": "high",
+          "cited_pages": [
+            "Introduction to Theory of Computation.pdf p.31"
+          ],
+          "gold": [
+            "Introduction to Theory of Computation.pdf p.31"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 6479.8,
+          "prompt_tokens": 1518,
+          "output_tokens": 111,
+          "error": null
+        },
+        {
+          "id": "q04",
+          "type": "factual",
+          "question": "Which edit operations are allowed in the minimum edit distance method for spelling correction?",
+          "standalone_question": "Which edit operations are allowed in the minimum edit distance method for spelling correction?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "The allowed edit operations in the Minimum Edit Distance method are:\n\n1. **Insertion (I)** – Inserting a character [S1][S2].\n2. **Deletion (D)** – Removing a character [S1][S2].\n3. **Substitution (S)** – Replacing one character with another [S1][S2].\n4. **Transposition** – Swapping adjacent characters [S1].\n\nEach operation typically carries a cost of 1 [S2][S4].",
+          "confidence": "high",
+          "cited_pages": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.6",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.10"
+          ],
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3569.9,
+          "prompt_tokens": 1613,
+          "output_tokens": 154,
+          "error": null
+        },
+        {
+          "id": "q05",
+          "type": "factual",
+          "question": "When correcting 'smple' in the sentence 'This is a smple text.', which correction is chosen and why?",
+          "standalone_question": "When correcting 'smple' in the sentence 'This is a smple text.', which correction is chosen and why?",
+          "answerable": true,
+          "predicted_answerable": true,
+          "answer": "The correction chosen is **simple** [S1]. It is selected because it has the minimum edit distance to \"smple\" among the candidates [S1][S2]. \n\nSpecifically, the edit distances for the candidate corrections are:\n- **simple**: Edit distance of 1 [S1]\n- **sample**: Edit distance of 2 [S1]\n- **smile**: Edit distance of 2 [S1]\n\nUnder the minimum edit distance method, the word with the smallest edit distance is chosen as the correction [S1][S2][S4].",
+          "confidence": "high",
+          "cited_pages": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.5",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.7",
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9"
+          ],
+          "gold": [
+            "Lecture notes 20 nlp-tokenization-spelling-correction-notes.pdf p.9"
+          ],
+          "gold_cited": true,
+          "faithfulness": 1.0,
+          "unsupported_claims": [],
+          "relevancy": 5,
+          "removed_citations": [],
+          "repaired": false,
+          "llm_answered": true,
+          "latency_ms": 3379.4,
+          "prompt_tokens": 1659,
+          "output_tokens": 167,
+          "error": null
+        }
+      ]
+    }
+  ],
+  "notes": []
+}
