@@ -31,5 +31,5 @@ jobs:
           ruff check .
           ruff format --check .
 
-      - name: Test (offline: FakeLLMClient + HashEmbedder, no API key needed)
+      - name: "Test (offline: FakeLLMClient + HashEmbedder, no API key needed)"
         run: pytest -q
