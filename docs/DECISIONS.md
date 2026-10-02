@@ -6,7 +6,8 @@ simpler option was preferred.
 ## P0 - Scaffold
 
 - **Spec file name.** The spec arrived as `docs/LectureLens_NLP_Project_Spec.pdf`; renamed to
-  `docs/SPEC.pdf` as CLAUDE.md and SPEC section 16.1 expect.
+  `docs/SPEC.pdf` as CLAUDE.md and SPEC section 16.1 expect. Later removed from the repository
+  and its history before publishing (its cover names a student); it is git-ignored and kept locally.
 - **Scaffold scope.** Subpackages from SPEC section 5 (`ingestion/`, `indexing/`, `retrieval/`,
   `llm/`, `rag/`, `tools/`, `evaluation/`) exist with `__init__.py` only. Their modules get written
   in the phase that implements them, so there are no empty placeholder files. `app/`, the

@@ -3,9 +3,9 @@
 > Ask your lecture PDFs a question, get an answer with page-level citations,
 > and generate quizzes, summaries and flashcards from the same material.
 
-DSE4150 (Natural Language Processing) course project. Full specification:
-[docs/SPEC.pdf](docs/SPEC.pdf). Every design decision and deviation is logged with its reason in
-[docs/DECISIONS.md](docs/DECISIONS.md).
+DSE4150 (Natural Language Processing) course project, built to a written specification (kept out of
+the public repo; section references such as "SPEC 7.2" point to it). Every design decision and
+deviation is logged with its reason in [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Features
 

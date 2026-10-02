@@ -1,7 +1,7 @@
 # CLAUDE.md - instructions for Claude Code
 ## Project
 LectureLens: a citation-grounded RAG study tutor over course PDFs (NLP course project, DSE4150).
-Full specification: docs/SPEC.pdf. Follow it. If something is ambiguous, prefer the simpler option
+Full specification: docs/SPEC.pdf (local only, git-ignored; not in the public repo). Follow it. If something is ambiguous, prefer the simpler option
 and note it in docs/DECISIONS.md.
 ## Hard requirements (graded)
 - Python 3.11, package under src/lecturelens, runnable as `python -m lecturelens`.

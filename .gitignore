@@ -29,3 +29,6 @@ htmlcov/
 
 # Local Claude Code / editor settings
 .claude/
+
+# Course specification: kept locally, not published
+docs/SPEC.pdf
